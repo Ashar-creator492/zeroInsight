@@ -1,0 +1,37 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from backend.app.database import get_db
+from backend.app.models import Product
+from backend.app.schemas import ProductOut, ProductSummary, ReviewsPage
+from backend.app.services.reviews import get_review_page, get_summary
+
+router = APIRouter(prefix="/api/products", tags=["products"])
+
+
+@router.get("", response_model=list[ProductOut])
+def products(db: Session = Depends(get_db)):
+    return db.scalars(select(Product).order_by(Product.name)).all()
+
+
+def require_product(db: Session, product_id: str) -> None:
+    if db.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+
+@router.get("/{product_id}/reviews", response_model=ReviewsPage)
+def reviews(
+    product_id: str,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    require_product(db, product_id)
+    return get_review_page(db, product_id, page, page_size)
+
+
+@router.get("/{product_id}/summary", response_model=ProductSummary)
+def summary(product_id: str, db: Session = Depends(get_db)):
+    require_product(db, product_id)
+    return get_summary(db, product_id)
