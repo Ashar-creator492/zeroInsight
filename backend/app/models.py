@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.database import Base
@@ -33,3 +33,30 @@ class Review(Base):
     content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
 
     product: Mapped[Product] = relationship(back_populates="reviews")
+    classifications: Mapped[list["ReviewClassification"]] = relationship(back_populates="review")
+
+
+class ReviewClassification(Base):
+    __tablename__ = "review_classifications"
+    __table_args__ = (UniqueConstraint("review_id", "model_name", "version", name="uq_classification_review_model_version"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    review_id: Mapped[str] = mapped_column(ForeignKey("reviews.id"), nullable=False, index=True)
+    model_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    version: Mapped[str] = mapped_column(String(30), nullable=False)
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    sentiment: Mapped[str | None] = mapped_column(String(20))
+    complaint_categories: Mapped[list[str] | None] = mapped_column(JSON)
+    praised_features: Mapped[list[str] | None] = mapped_column(JSON)
+    negative_experiences: Mapped[list[str] | None] = mapped_column(JSON)
+    product_attributes: Mapped[list[str] | None] = mapped_column(JSON)
+    issue_severity: Mapped[str | None] = mapped_column(String(20))
+    investigation_areas: Mapped[list[str] | None] = mapped_column(JSON)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(Text)
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    review: Mapped[Review] = relationship(back_populates="classifications")

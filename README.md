@@ -1,6 +1,6 @@
 # ZeroInsight AI
 
-Independent portfolio project inspired by Zero Lifestyle. Phase 1 analyzes the supplied **Luna Smartwatch** reviews only. It does not include AI classification, embeddings, a dashboard, or other products yet.
+Independent portfolio project inspired by Zero Lifestyle. The backend analyzes the supplied **Luna Smartwatch** reviews only. Phase 2 adds optional Groq classification; it does not include embeddings, a dashboard, or other products.
 
 ## Structure
 
@@ -30,6 +30,14 @@ uvicorn backend.app.main:app --reload
 The import command validates the whole file before writing and prints a data quality report with inserted, updated, and unchanged counts. Re-running it skips unchanged reviews. Invalid dates are preserved as raw strings with a null parsed date. Malformed rows, invalid ratings, missing required values, duplicate source IDs, and unexpected product names stop the import.
 
 API: `/health`, `/api/products`, `/api/products/luna-smartwatch/reviews?page=1&page_size=20`, `/api/products/luna-smartwatch/summary`. Open `/docs` for the interactive API reference.
+
+## Phase 2 review intelligence
+
+Set `GROQ_API_KEY` in your private `.env` and optionally change `GROQ_MODEL` (default `openai/gpt-oss-20b`). The backend and Phase 1 endpoints run without a key. Apply `alembic upgrade head`, then run a ten-review pilot with `python -m backend.app.classify`. This selects a stable mix of real Luna ratings and prints original text alongside interpretations for manual review. Re-running skips completed results for unchanged review content. Failed records can be retried. Each review commits separately, so interruption is resumable. API token counts are stored when Groq returns usage metadata.
+
+After approving the pilot, an explicit `python -m backend.app.classify --all --limit 25` processes up to 25 pending or failed Luna reviews; repeat for later batches. No full batch is started automatically. A model or classification version change produces separate results. Changed review content is reclassified while old review text remains in the review table.
+
+Intelligence API: `/api/products/luna-smartwatch/intelligence/progress`, `/sentiment`, `/complaints`, `/praised-features`, and `/classifications?page=1&page_size=20`. Counts include only completed, current classifications. Progress reports analyzed, failed, and pending separately. Category and feature labels are AI interpretations of customer reports, not confirmed defects.
 
 ## Tests
 

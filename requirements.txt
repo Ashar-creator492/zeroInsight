@@ -6,3 +6,4 @@ psycopg[binary]>=3.2,<4
 pydantic-settings>=2.4,<3
 pytest>=8,<9
 httpx>=0.27,<1
+langchain-groq>=0.3,<2
