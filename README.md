@@ -31,6 +31,18 @@ The import command validates the whole file before writing and prints a data qua
 
 API: `/health`, `/api/products`, `/api/products/luna-smartwatch/reviews?page=1&page_size=20`, `/api/products/luna-smartwatch/summary`. Open `/docs` for the interactive API reference.
 
+## Phase 3 landing page preview
+
+The landing page is the first frontend milestone. It uses React, TypeScript, Vite, and Tailwind. From the project root:
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173/`. The `/dashboard` route currently shows a milestone placeholder; the real backend-connected dashboard follows landing-page approval. The hero artwork uses generated, unbranded product illustrations and is not an official catalog image. No Groq key or backend connection is needed to preview this milestone.
+
 ## Phase 2 review intelligence
 
 Set `GROQ_API_KEY` in your private `.env` and optionally change `GROQ_MODEL` (default `openai/gpt-oss-20b`). The backend and Phase 1 endpoints run without a key. Apply `alembic upgrade head`, then run a ten-review pilot with `python -m backend.app.classify`, or select up to 30 real Luna source IDs with `python -m backend.app.classify --source-ids 14 51 110`. Re-running skips completed results for unchanged review content. Failed records can be retried. Each review commits separately, so interruption is resumable. Groq JSON object mode is validated locally with Pydantic and exact source quotes; malformed or ungrounded outputs are retried at most three times and never silently accepted. The database stores attempt counts, error types, validation failures, and available usage for all attempts.

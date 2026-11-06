@@ -224,3 +224,10 @@ data/raw/
 data/chroma/
 *.sqlite3
 *.db
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+.env.*
+!.env.example
