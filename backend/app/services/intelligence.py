@@ -1,4 +1,5 @@
 from collections import Counter
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -22,10 +23,18 @@ def progress(db: Session, model_name: str) -> dict:
     rows = db.scalars(current_query(model_name)).all()
     done = sum(row.status == "completed" for row in rows)
     failed = sum(row.status == "failed" for row in rows)
+    failed_by_type = Counter(row.error_type or "Unknown" for row in rows if row.status == "failed")
+    cooldowns = [row.rate_limit_info.get("retry_at") for row in rows
+                 if row.status == "failed" and row.rate_limit_info and row.rate_limit_info.get("retry_at")]
+    future_cooldowns = [value for value in cooldowns if datetime.fromisoformat(value) > datetime.now(timezone.utc)]
     return {"product_id": "luna-smartwatch", "model_name": model_name, "version": CLASSIFICATION_VERSION,
             "total_reviews": total, "analyzed": done, "failed": failed, "pending": total - done - failed,
-            "input_tokens": sum(row.input_tokens or 0 for row in rows if row.status == "completed"),
-            "output_tokens": sum(row.output_tokens or 0 for row in rows if row.status == "completed")}
+            "failed_by_type": dict(failed_by_type), "cooldown_until": max(future_cooldowns, default=None),
+            "input_tokens": sum(row.input_tokens or 0 for row in rows),
+            "output_tokens": sum(row.output_tokens or 0 for row in rows),
+            "attempts": sum(row.attempt_count or 0 for row in rows),
+            "schema_errors": sum(row.schema_error_count or 0 for row in rows),
+            "evidence_errors": sum(row.evidence_error_count or 0 for row in rows)}
 
 
 def distribution(db: Session, model_name: str, field: str) -> dict:
@@ -33,5 +42,8 @@ def distribution(db: Session, model_name: str, field: str) -> dict:
     counts = Counter()
     for row in rows:
         value = getattr(row, field)
-        counts.update(value if isinstance(value, list) else [value])
+        if field == "praised_features":
+            counts.update(item["category"] for item in value or [])
+        else:
+            counts.update(value if isinstance(value, list) else [value])
     return {"product_id": "luna-smartwatch", "analyzed_reviews": len(rows), "counts": dict(sorted(counts.items()))}
