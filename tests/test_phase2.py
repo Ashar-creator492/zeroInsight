@@ -335,3 +335,27 @@ def test_intelligence_endpoints_use_only_stored_results(engine):
         assert client.get("/api/products/unknown/intelligence/progress").status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+def test_intelligence_queries_do_not_mix_products(engine):
+    with Session(engine) as db:
+        process_reviews(db, FakeChain(RESULT), "openai/gpt-oss-20b", [db.get(Review, "a" * 64)])
+        db.add(Product(id="test-product", name="Test fixture"))
+        db.add(Review(id="c" * 64, product_id="test-product", source_id="3", review_text="Fixture", title=None,
+                      rating=3, review_date=None, raw_date="", source_url="https://example.test", content_fingerprint="h" * 64))
+        db.commit()
+
+    def test_db():
+        with Session(engine) as db:
+            yield db
+
+    app.dependency_overrides[get_db] = test_db
+    try:
+        client = TestClient(app)
+        root = "/api/products/test-product/intelligence"
+        assert client.get(root + "/progress").json()["total_reviews"] == 1
+        assert client.get(root + "/progress").json()["analyzed"] == 0
+        assert client.get(root + "/sentiment").json()["counts"] == {}
+        assert client.get(root + "/classifications").json()["total"] == 0
+    finally:
+        app.dependency_overrides.clear()

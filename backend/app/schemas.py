@@ -35,3 +35,14 @@ class ProductSummary(BaseModel):
     total_reviews: int
     average_rating: float | None
     rating_distribution: dict[int, int]
+
+
+class ReviewTrendPoint(BaseModel):
+    month: str
+    count: int
+
+
+class ReviewTrend(BaseModel):
+    product_id: str
+    points: list[ReviewTrendPoint]
+    undated_reviews: int

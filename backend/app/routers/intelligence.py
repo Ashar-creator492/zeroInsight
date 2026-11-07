@@ -18,32 +18,32 @@ def check_luna(db: Session, product_id: str):
 @router.get("/progress")
 def analysis_progress(product_id: str, db: Session = Depends(get_db)):
     check_luna(db, product_id)
-    return progress(db, get_settings().groq_model)
+    return progress(db, get_settings().groq_model, product_id)
 
 
 @router.get("/sentiment")
 def sentiments(product_id: str, db: Session = Depends(get_db)):
     check_luna(db, product_id)
-    return distribution(db, get_settings().groq_model, "sentiment")
+    return distribution(db, get_settings().groq_model, "sentiment", product_id)
 
 
 @router.get("/complaints")
 def complaints(product_id: str, db: Session = Depends(get_db)):
     check_luna(db, product_id)
-    return distribution(db, get_settings().groq_model, "complaint_categories")
+    return distribution(db, get_settings().groq_model, "complaint_categories", product_id)
 
 
 @router.get("/praised-features")
 def praised_features(product_id: str, db: Session = Depends(get_db)):
     check_luna(db, product_id)
-    return distribution(db, get_settings().groq_model, "praised_features")
+    return distribution(db, get_settings().groq_model, "praised_features", product_id)
 
 
 @router.get("/classifications")
 def classifications(product_id: str, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
                     db: Session = Depends(get_db)):
     check_luna(db, product_id)
-    query = current_query(get_settings().groq_model)
+    query = current_query(get_settings().groq_model, product_id)
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = db.scalars(query.order_by(ReviewClassification.review_id).offset((page - 1) * page_size).limit(page_size)).all()
     return {"items": [{"review_id": row.review_id, "status": row.status, "sentiment": row.sentiment if row.status == "completed" else None,

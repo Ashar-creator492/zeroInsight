@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app.models import Review
-from backend.app.schemas import ProductSummary, ReviewsPage
+from backend.app.schemas import ProductSummary, ReviewsPage, ReviewTrend, ReviewTrendPoint
 
 
 def get_review_page(db: Session, product_id: str, page: int, page_size: int) -> ReviewsPage:
@@ -10,7 +10,7 @@ def get_review_page(db: Session, product_id: str, page: int, page_size: int) -> 
     items = db.scalars(
         select(Review)
         .where(Review.product_id == product_id)
-        .order_by(Review.review_date.desc(), Review.id)
+        .order_by(Review.review_date.desc().nulls_last(), Review.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
@@ -28,3 +28,17 @@ def get_summary(db: Session, product_id: str) -> ProductSummary:
     total = sum(distribution.values())
     average = sum(rating * count for rating, count in distribution.items()) / total if total else None
     return ProductSummary(product_id=product_id, total_reviews=total, average_rating=average, rating_distribution=distribution)
+
+
+def get_review_trend(db: Session, product_id: str) -> ReviewTrend:
+    year = func.extract("year", Review.review_date)
+    month = func.extract("month", Review.review_date)
+    rows = db.execute(select(year, month, func.count(Review.id)).where(
+        Review.product_id == product_id, Review.review_date.is_not(None)
+    ).group_by(year, month).order_by(year, month)).all()
+    undated = db.scalar(select(func.count()).select_from(Review).where(
+        Review.product_id == product_id, Review.review_date.is_(None)
+    )) or 0
+    return ReviewTrend(product_id=product_id, points=[
+        ReviewTrendPoint(month=f"{int(y):04d}-{int(m):02d}", count=count) for y, m, count in rows
+    ], undated_reviews=undated)

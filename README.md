@@ -31,7 +31,7 @@ The import command validates the whole file before writing and prints a data qua
 
 API: `/health`, `/api/products`, `/api/products/luna-smartwatch/reviews?page=1&page_size=20`, `/api/products/luna-smartwatch/summary`. Open `/docs` for the interactive API reference.
 
-## Phase 3 landing page preview
+## Phase 3 local preview
 
 The landing page is the first frontend milestone. It uses React, TypeScript, Vite, and Tailwind. From the project root:
 
@@ -41,7 +41,16 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/`. The `/dashboard` route currently shows a milestone placeholder; the real backend-connected dashboard follows landing-page approval. The hero artwork uses generated, unbranded product illustrations and is not an official catalog image. No Groq key or backend connection is needed to preview this milestone.
+Open `http://127.0.0.1:5173/` for the landing page or `http://127.0.0.1:5173/dashboard` for the Overview. Start PostgreSQL and FastAPI in a second terminal from the project root:
+
+```sh
+source .venv/bin/activate
+uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+```
+
+Vite proxies `/api` to the local backend. For a different API location, see `frontend/.env.example`. The Overview reads existing stored reviews and classifications; it does not start processing. Other dashboard pages are disabled until their milestones. The hero and watch artwork are generated, unbranded illustrations, not official catalog images.
+
+Run frontend checks from `frontend/` with `npm test` and `npm run build`.
 
 ## Phase 2 review intelligence
 

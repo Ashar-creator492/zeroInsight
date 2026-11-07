@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import {
   ArrowDownRight, ArrowRight, AudioLines, ChartNoAxesCombined, ChevronDown,
@@ -6,6 +6,7 @@ import {
   ShieldCheck, Sparkles, Watch, X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+const Dashboard = lazy(() => import('./Dashboard'))
 
 const capabilities: { number: string; title: string; text: string; icon: LucideIcon }[] = [
   { number: '01', title: 'Analyze reviews', text: 'Bring customer feedback into a clearer, structured view.', icon: MessageSquareText },
@@ -109,10 +110,6 @@ function LandingPage() {
   )
 }
 
-function DashboardComingSoon() {
-  return <><Header /><main className="coming-soon"><div className="coming-soon-inner"><p className="eyebrow"><span className="red-mark" /> Product intelligence</p><h1>The workspace<br /><em>is next.</em></h1><p>The dashboard will be connected to the Luna review dataset in the next milestone, after the landing page is approved.</p><Link className="text-link" to="/">Return to the landing page <ArrowRight size={16} /></Link></div></main></>
-}
-
 export default function App() {
-  return <Routes><Route path="/" element={<LandingPage />} /><Route path="/dashboard" element={<DashboardComingSoon />} /><Route path="*" element={<DashboardComingSoon />} /></Routes>
+  return <Routes><Route path="/" element={<LandingPage />} /><Route path="/dashboard" element={<Suspense fallback={<main style={{ padding: '3rem' }}>Loading dashboard…</main>}><Dashboard /></Suspense>} /><Route path="*" element={<LandingPage />} /></Routes>
 }

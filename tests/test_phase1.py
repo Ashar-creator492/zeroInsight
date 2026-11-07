@@ -103,3 +103,26 @@ def test_idempotent_import_update_and_api(tmp_path, engine):
         assert client.get("/api/products/unknown/summary").status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+def test_monthly_trend_counts_dated_and_undated_reviews(tmp_path, engine):
+    path = tmp_path / "reviews.csv"
+    write_csv(path, [sample_row(), sample_row(id="2", date="10/01/2026"),
+                     sample_row(id="3", date="11/01/2026"), sample_row(id="4", date="unknown")])
+    rows, _ = load_reviews(path)
+    with Session(engine) as session:
+        import_reviews(session, rows)
+
+    def test_db():
+        with Session(engine) as session:
+            yield session
+
+    app.dependency_overrides[get_db] = test_db
+    try:
+        response = TestClient(app).get("/api/products/luna-smartwatch/review-trend")
+        assert response.status_code == 200
+        assert response.json() == {"product_id": "luna-smartwatch", "points": [
+            {"month": "2026-10", "count": 2}, {"month": "2026-11", "count": 1}], "undated_reviews": 1}
+        assert TestClient(app).get("/api/products/unknown/review-trend").status_code == 404
+    finally:
+        app.dependency_overrides.clear()
