@@ -1,4 +1,10 @@
 export interface Product { id: string; name: string }
+export interface ReviewAnalysis {
+  sentiment: string | null; complaint_categories: string[] | null
+  praised_features: { category: string; evidence_quote: string }[] | null
+  general_praise: string[] | null; negative_experiences: string[] | null
+  issue_severity: string | null; investigation_areas: string[] | null
+}
 export interface Review {
   id: string
   source_id: string
@@ -8,6 +14,8 @@ export interface Review {
   rating: number
   review_date: string | null
   source_url: string
+  analysis_status?: 'completed' | 'failed' | 'pending'
+  classification?: ReviewAnalysis | null
 }
 export interface ReviewsPage { items: Review[]; total: number; page: number; page_size: number }
 export interface Summary { product_id: string; total_reviews: number; average_rating: number | null; rating_distribution: Record<string, number> }
@@ -17,6 +25,9 @@ export interface Progress {
   analyzed: number; failed: number; pending: number; cooldown_until: string | null
 }
 export interface Distribution { product_id: string; analyzed_reviews: number; counts: Record<string, number> }
+export interface RatingSentiment { product_id: string; analyzed_reviews: number; ratings: ({ rating: number } & Record<string, number>)[] }
+export interface ComplaintBreakdown { product_id: string; analyzed_reviews: number; categories: { category: string; count: number; severity: Record<string, number> }[] }
+export interface ReviewFilters { search?: string; rating?: string; sentiment?: string; complaint?: string; sort?: string; order?: string; page?: number; page_size?: number }
 
 const base = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
@@ -30,9 +41,16 @@ export const api = {
   products: (signal?: AbortSignal) => get<Product[]>('/api/products', signal),
   summary: (id: string, signal?: AbortSignal) => get<Summary>(`/api/products/${encodeURIComponent(id)}/summary`, signal),
   reviews: (id: string, signal?: AbortSignal) => get<ReviewsPage>(`/api/products/${encodeURIComponent(id)}/reviews?page=1&page_size=3`, signal),
+  searchReviews: (id: string, filters: ReviewFilters, signal?: AbortSignal) => {
+    const query = new URLSearchParams()
+    Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)) })
+    return get<ReviewsPage>(`/api/products/${encodeURIComponent(id)}/reviews?${query}`, signal)
+  },
   trend: (id: string, signal?: AbortSignal) => get<Trend>(`/api/products/${encodeURIComponent(id)}/review-trend`, signal),
   progress: (id: string, signal?: AbortSignal) => get<Progress>(`/api/products/${encodeURIComponent(id)}/intelligence/progress`, signal),
   sentiment: (id: string, signal?: AbortSignal) => get<Distribution>(`/api/products/${encodeURIComponent(id)}/intelligence/sentiment`, signal),
   complaints: (id: string, signal?: AbortSignal) => get<Distribution>(`/api/products/${encodeURIComponent(id)}/intelligence/complaints`, signal),
   features: (id: string, signal?: AbortSignal) => get<Distribution>(`/api/products/${encodeURIComponent(id)}/intelligence/praised-features`, signal),
+  sentimentByRating: (id: string, signal?: AbortSignal) => get<RatingSentiment>(`/api/products/${encodeURIComponent(id)}/intelligence/sentiment-by-rating`, signal),
+  complaintBreakdown: (id: string, signal?: AbortSignal) => get<ComplaintBreakdown>(`/api/products/${encodeURIComponent(id)}/intelligence/complaint-breakdown`, signal),
 }

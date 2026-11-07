@@ -1,8 +1,12 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
+from backend.app.config import get_settings
+from backend.app.services.classification import Complaint, Sentiment
 from backend.app.models import Product
 from backend.app.schemas import ProductOut, ProductSummary, ReviewsPage, ReviewTrend
 from backend.app.services.reviews import get_review_page, get_review_trend, get_summary
@@ -25,10 +29,17 @@ def reviews(
     product_id: str,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    search: str | None = Query(default=None, max_length=200),
+    rating: int | None = Query(default=None, ge=1, le=5),
+    sentiment: Sentiment | None = None,
+    complaint: Complaint | None = None,
+    sort: Literal["date", "rating"] = "date",
+    order: Literal["asc", "desc"] = "desc",
     db: Session = Depends(get_db),
 ):
     require_product(db, product_id)
-    return get_review_page(db, product_id, page, page_size)
+    return get_review_page(db, product_id, page, page_size, get_settings().groq_model,
+                           search, rating, sentiment, complaint, sort, order)
 
 
 @router.get("/{product_id}/summary", response_model=ProductSummary)

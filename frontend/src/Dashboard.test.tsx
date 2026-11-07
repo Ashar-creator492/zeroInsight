@@ -51,7 +51,7 @@ describe('dashboard overview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
     expect(screen.getAllByRole('button', { name: 'Close navigation' }).length).toBeGreaterThan(0)
     expect(document.querySelector('.d-sidebar')?.classList.contains('is-open')).toBe(true)
-    expect((screen.getByRole('button', { name: /Review Explorer/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('link', { name: /Review Explorer/ }).getAttribute('href')).toContain('/dashboard/reviews')
     fireEvent.click(screen.getAllByRole('button', { name: 'Close navigation' })[0])
     expect(document.querySelector('.d-sidebar')?.classList.contains('is-open')).toBe(false)
   })

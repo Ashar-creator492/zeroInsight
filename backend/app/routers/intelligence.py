@@ -6,7 +6,7 @@ from backend.app.config import get_settings
 from backend.app.database import get_db
 from backend.app.models import ReviewClassification
 from backend.app.routers.products import require_product
-from backend.app.services.intelligence import current_query, distribution, progress
+from backend.app.services.intelligence import complaint_breakdown, current_query, distribution, progress, sentiment_by_rating
 
 router = APIRouter(prefix="/api/products/{product_id}/intelligence", tags=["intelligence"])
 
@@ -27,10 +27,22 @@ def sentiments(product_id: str, db: Session = Depends(get_db)):
     return distribution(db, get_settings().groq_model, "sentiment", product_id)
 
 
+@router.get("/sentiment-by-rating")
+def sentiments_by_rating(product_id: str, db: Session = Depends(get_db)):
+    check_luna(db, product_id)
+    return sentiment_by_rating(db, get_settings().groq_model, product_id)
+
+
 @router.get("/complaints")
 def complaints(product_id: str, db: Session = Depends(get_db)):
     check_luna(db, product_id)
     return distribution(db, get_settings().groq_model, "complaint_categories", product_id)
+
+
+@router.get("/complaint-breakdown")
+def complaints_by_severity(product_id: str, db: Session = Depends(get_db)):
+    check_luna(db, product_id)
+    return complaint_breakdown(db, get_settings().groq_model, product_id)
 
 
 @router.get("/praised-features")

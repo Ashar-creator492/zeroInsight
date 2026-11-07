@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -8,6 +9,18 @@ class ProductOut(BaseModel):
 
     id: str
     name: str
+
+
+class ReviewAnalysis(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    sentiment: str | None
+    complaint_categories: list[str] | None
+    praised_features: list[dict] | None
+    general_praise: list[str] | None
+    negative_experiences: list[str] | None
+    issue_severity: str | None
+    investigation_areas: list[str] | None
 
 
 class ReviewOut(BaseModel):
@@ -21,6 +34,8 @@ class ReviewOut(BaseModel):
     rating: int
     review_date: date | None
     source_url: str
+    analysis_status: Literal["completed", "failed", "pending"] = "pending"
+    classification: ReviewAnalysis | None = None
 
 
 class ReviewsPage(BaseModel):

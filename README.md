@@ -41,14 +41,14 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/` for the landing page or `http://127.0.0.1:5173/dashboard` for the Overview. Start PostgreSQL and FastAPI in a second terminal from the project root:
+Open `http://127.0.0.1:5173/` for the landing page or `http://127.0.0.1:5173/dashboard` for the Overview. The analytics pages are `/dashboard/reviews`, `/dashboard/sentiment`, and `/dashboard/complaints`. Start PostgreSQL and FastAPI in a second terminal from the project root:
 
 ```sh
 source .venv/bin/activate
 uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Vite proxies `/api` to the local backend. For a different API location, see `frontend/.env.example`. The Overview reads existing stored reviews and classifications; it does not start processing. Other dashboard pages are disabled until their milestones. The hero and watch artwork are generated, unbranded illustrations, not official catalog images.
+Vite proxies `/api` to the local backend. For a different API location, see `frontend/.env.example`. The dashboard reads existing stored reviews and classifications; it does not start processing. Review Explorer filters and pagination are applied in the backend across all stored reviews. Sentiment and complaint pages show only completed results for the configured model, current version, and matching review fingerprint. Future AI workflows remain disabled. The hero and watch artwork are generated, unbranded illustrations, not official catalog images.
 
 Run frontend checks from `frontend/` with `npm test` and `npm run build`.
 

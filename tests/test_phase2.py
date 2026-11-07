@@ -359,3 +359,65 @@ def test_intelligence_queries_do_not_mix_products(engine):
         assert client.get(root + "/classifications").json()["total"] == 0
     finally:
         app.dependency_overrides.clear()
+
+
+def test_review_filters_evidence_and_analytics_use_current_results(engine):
+    with Session(engine) as db:
+        first = db.get(Review, "a" * 64)
+        second = db.get(Review, "b" * 64)
+        process_reviews(db, FakeChain(RESULT), "openai/gpt-oss-20b", [first])
+        positive = {**RESULT, "sentiment": "positive", "complaint_categories": [], "negative_experiences": [],
+                    "product_attributes": ["display"], "general_praise": [], "issue_severity": "none",
+                    "praised_features": [{"category": "display", "evidence_quote": "Great display"}]}
+        process_reviews(db, FakeChain(positive), "openai/gpt-oss-20b", [second])
+
+    def test_db():
+        with Session(engine) as db:
+            yield db
+
+    app.dependency_overrides[get_db] = test_db
+    try:
+        client = TestClient(app)
+        root = "/api/products/luna-smartwatch"
+        assert client.get(root + "/reviews?search=display").json()["total"] == 1
+        filtered = client.get(root + "/reviews?sentiment=negative&complaint=battery").json()
+        assert filtered["total"] == 1
+        assert filtered["items"][0]["classification"]["negative_experiences"] == ["Battery dies by noon"]
+        assert client.get(root + "/reviews?rating=5").json()["total"] == 1
+        assert client.get(root + "/reviews?sort=rating&order=asc&page_size=1&page=2").json()["items"][0]["rating"] == 5
+        assert client.get(root + "/reviews?complaint=invalid").status_code == 422
+        matrix = client.get(root + "/intelligence/sentiment-by-rating").json()
+        assert matrix["analyzed_reviews"] == 2
+        assert matrix["ratings"][1]["negative"] == 1
+        assert matrix["ratings"][4]["positive"] == 1
+        categories = client.get(root + "/intelligence/complaint-breakdown").json()
+        assert categories["categories"] == [{"category": "battery", "count": 1, "severity": {"medium": 1}}]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_review_filters_exclude_stale_and_failed_classifications(engine):
+    with Session(engine) as db:
+        review = db.get(Review, "a" * 64)
+        process_reviews(db, FakeChain(RESULT), "openai/gpt-oss-20b", [review])
+        review.content_fingerprint = "z" * 64
+        db.commit()
+        failed = db.get(Review, "b" * 64)
+        process_reviews(db, FakeChain(ValueError("malformed")), "openai/gpt-oss-20b", [failed])
+
+    def test_db():
+        with Session(engine) as db:
+            yield db
+
+    app.dependency_overrides[get_db] = test_db
+    try:
+        client = TestClient(app)
+        root = "/api/products/luna-smartwatch"
+        assert client.get(root + "/reviews?sentiment=negative").json()["total"] == 0
+        assert client.get(root + "/reviews?complaint=battery").json()["total"] == 0
+        page = client.get(root + "/reviews").json()
+        statuses = {item["source_id"]: item["analysis_status"] for item in page["items"]}
+        assert statuses == {"1": "pending", "2": "failed"}
+        assert all(item["classification"] is None for item in page["items"])
+    finally:
+        app.dependency_overrides.clear()

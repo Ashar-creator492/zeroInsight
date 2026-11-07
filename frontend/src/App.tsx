@@ -7,6 +7,9 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 const Dashboard = lazy(() => import('./Dashboard'))
+const ReviewExplorer = lazy(() => import('./AnalyticsPages').then(module => ({ default: module.ReviewExplorer })))
+const SentimentPage = lazy(() => import('./AnalyticsPages').then(module => ({ default: module.SentimentPage })))
+const ComplaintPage = lazy(() => import('./AnalyticsPages').then(module => ({ default: module.ComplaintPage })))
 
 const capabilities: { number: string; title: string; text: string; icon: LucideIcon }[] = [
   { number: '01', title: 'Analyze reviews', text: 'Bring customer feedback into a clearer, structured view.', icon: MessageSquareText },
@@ -111,5 +114,5 @@ function LandingPage() {
 }
 
 export default function App() {
-  return <Routes><Route path="/" element={<LandingPage />} /><Route path="/dashboard" element={<Suspense fallback={<main style={{ padding: '3rem' }}>Loading dashboard…</main>}><Dashboard /></Suspense>} /><Route path="*" element={<LandingPage />} /></Routes>
+  return <Suspense fallback={<main style={{ padding: '3rem' }}>Loading dashboard…</main>}><Routes><Route path="/" element={<LandingPage />} /><Route path="/dashboard" element={<Dashboard />} /><Route path="/dashboard/reviews" element={<ReviewExplorer />} /><Route path="/dashboard/sentiment" element={<SentimentPage />} /><Route path="/dashboard/complaints" element={<ComplaintPage />} /><Route path="*" element={<LandingPage />} /></Routes></Suspense>
 }

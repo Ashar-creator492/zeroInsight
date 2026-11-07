@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight,
   CircleHelp, ExternalLink, Gauge, Home, Layers3, Menu, MessageSquareText,
@@ -15,9 +15,9 @@ type OverviewData = { summary: Summary | null; reviews: ReviewsPage | null; tren
 const emptyData: OverviewData = { summary: null, reviews: null, trend: null, progress: null, sentiment: null, complaints: null, features: null }
 const sentimentColors: Record<string, string> = { positive: '#312b2a', neutral: '#b9aeaa', mixed: '#d8c8c4', negative: '#b61b1c' }
 const sentimentOrder = ['positive', 'neutral', 'mixed', 'negative']
-const navItems: { label: string; icon: LucideIcon }[] = [
-  { label: 'Overview', icon: Home }, { label: 'Review Explorer', icon: Search },
-  { label: 'Sentiment Analytics', icon: BarChart3 }, { label: 'Complaint Intelligence', icon: CircleHelp },
+const navItems: { label: string; icon: LucideIcon; path?: string }[] = [
+  { label: 'Overview', icon: Home, path: '/dashboard' }, { label: 'Review Explorer', icon: Search, path: '/dashboard/reviews' },
+  { label: 'Sentiment Analytics', icon: BarChart3, path: '/dashboard/sentiment' }, { label: 'Complaint Intelligence', icon: CircleHelp, path: '/dashboard/complaints' },
   { label: 'AI Insights', icon: Sparkles }, { label: 'Ask ZeroInsight', icon: MessageSquareText },
   { label: 'Investigation Center', icon: Workflow }, { label: 'Settings & Processing', icon: Settings2 },
 ]
@@ -50,13 +50,13 @@ function Stars({ rating }: { rating: number }) {
 function Empty({ children }: { children: React.ReactNode }) { return <div className="d-empty">{children}</div> }
 function CardTitle({ title, detail }: { title: string; detail?: string }) { return <div className="d-card-title"><h2>{title}</h2>{detail && <span>{detail}</span>}</div> }
 
-function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: { collapsed: boolean; setCollapsed: (value: boolean) => void; mobileOpen: boolean; setMobileOpen: (value: boolean) => void }) {
+export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, productId }: { collapsed: boolean; setCollapsed: (value: boolean) => void; mobileOpen: boolean; setMobileOpen: (value: boolean) => void; productId?: string }) {
   return <>
     {mobileOpen && <button className="d-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
     <aside className={`d-sidebar ${collapsed ? 'is-collapsed' : ''} ${mobileOpen ? 'is-open' : ''}`}>
       <div className="d-side-brand"><Link to="/" className="d-logo" aria-label="ZeroInsight home">{collapsed ? 'Z' : 'ZeroInsight'}<span>.</span></Link><span className="d-side-kicker">Company intelligence</span><button className="d-mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={19} /></button></div>
-      <nav className="d-nav" aria-label="Dashboard navigation">{navItems.map(({ label, icon: Icon }, index) => index === 0
-        ? <a href="#overview" className="d-nav-item active" key={label} aria-current="page" onClick={() => setMobileOpen(false)}><Icon size={18} strokeWidth={1.5} /><span>{label}</span></a>
+      <nav className="d-nav" aria-label="Dashboard navigation">{navItems.map(({ label, icon: Icon, path }) => path
+        ? <NavLink to={`${path}${productId ? `?product=${encodeURIComponent(productId)}` : ''}`} end={path === '/dashboard'} className={({ isActive }) => `d-nav-item ${isActive ? 'active' : ''}`} key={label} onClick={() => setMobileOpen(false)}><Icon size={18} strokeWidth={1.5} /><span>{label}</span></NavLink>
         : <button className="d-nav-item" key={label} disabled title={`${label} will be available in a later milestone`}><Icon size={18} strokeWidth={1.5} /><span>{label}</span><small>Soon</small></button>)}</nav>
       <div className="d-side-bottom"><Link to="/" className="d-back"><ArrowLeft size={16} /><span>Back to website</span></Link><button className="d-collapse" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}</button></div>
     </aside>
@@ -114,7 +114,7 @@ export default function Dashboard() {
   const unavailable = (label: string) => <Empty>{label} unavailable. Try refreshing the dashboard.</Empty>
 
   return <div className={`dashboard ${collapsed ? 'sidebar-collapsed' : ''}`} id="overview">
-    <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+    <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} productId={productId} />
     <main className="d-main">
       <header className="d-header"><div className="d-header-top"><button className="d-menu-toggle" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={20} /></button><p className="d-eyebrow">{product?.name || 'Product intelligence'}</p><div className="d-header-actions"><label className="d-product-select"><span className="sr-only">Select product</span><select value={productId} onChange={event => setProductId(event.target.value)} disabled={!products?.length}>{products?.length ? products.map(item => <option key={item.id} value={item.id}>{item.name}</option>) : <option value="">{productError ? 'Products unavailable' : 'Loading products…'}</option>}</select></label><button className="d-refresh" onClick={() => setRefresh(value => value + 1)} aria-label="Refresh dashboard data" title="Refresh data"><RefreshCw size={17} /></button></div></div><h1>Product Intelligence <em>Dashboard</em></h1><p>Real customer feedback. AI interpretations. Evidence for better decisions.</p></header>
       {productError && <div className="d-banner" role="alert">The backend could not be reached. Check that FastAPI is running, then refresh.</div>}

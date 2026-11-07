@@ -47,3 +47,30 @@ def distribution(db: Session, model_name: str, field: str, product_id: str = "lu
         else:
             counts.update(value if isinstance(value, list) else [value])
     return {"product_id": product_id, "analyzed_reviews": len(rows), "counts": dict(sorted(counts.items()))}
+
+
+def sentiment_by_rating(db: Session, model_name: str, product_id: str) -> dict:
+    query = current_query(model_name, product_id).with_only_columns(
+        Review.rating, ReviewClassification.sentiment, func.count(ReviewClassification.id)
+    ).where(ReviewClassification.status == "completed").group_by(Review.rating, ReviewClassification.sentiment)
+    rows = db.execute(query).all()
+    values = {rating: {name: 0 for name in ("positive", "negative", "neutral", "mixed")} for rating in range(1, 6)}
+    for rating, sentiment, count in rows:
+        if sentiment in values[rating]:
+            values[rating][sentiment] = count
+    return {"product_id": product_id, "analyzed_reviews": sum(sum(counts.values()) for counts in values.values()),
+            "ratings": [{"rating": rating, **counts} for rating, counts in values.items()]}
+
+
+def complaint_breakdown(db: Session, model_name: str, product_id: str) -> dict:
+    rows = db.scalars(current_query(model_name, product_id).where(ReviewClassification.status == "completed")).all()
+    categories: dict[str, Counter] = {}
+    for row in rows:
+        for category in set(row.complaint_categories or []):
+            counts = categories.setdefault(category, Counter())
+            counts["count"] += 1
+            counts[row.issue_severity or "unknown"] += 1
+    return {"product_id": product_id, "analyzed_reviews": len(rows), "categories": [
+        {"category": category, "count": counts["count"], "severity": {key: value for key, value in counts.items() if key != "count"}}
+        for category, counts in sorted(categories.items(), key=lambda item: (-item[1]["count"], item[0]))
+    ]}
