@@ -18,8 +18,8 @@ const sentimentOrder = ['positive', 'neutral', 'mixed', 'negative']
 const navItems: { label: string; icon: LucideIcon; path?: string }[] = [
   { label: 'Overview', icon: Home, path: '/dashboard' }, { label: 'Review Explorer', icon: Search, path: '/dashboard/reviews' },
   { label: 'Sentiment Analytics', icon: BarChart3, path: '/dashboard/sentiment' }, { label: 'Complaint Intelligence', icon: CircleHelp, path: '/dashboard/complaints' },
-  { label: 'AI Insights', icon: Sparkles }, { label: 'Ask ZeroInsight', icon: MessageSquareText },
-  { label: 'Investigation Center', icon: Workflow }, { label: 'Settings & Processing', icon: Settings2 },
+  { label: 'AI Insights', icon: Sparkles, path: '/dashboard/insights' }, { label: 'Ask ZeroInsight', icon: MessageSquareText, path: '/dashboard/ask' },
+  { label: 'Investigation Center', icon: Workflow, path: '/dashboard/investigations' }, { label: 'Settings & Processing', icon: Settings2, path: '/dashboard/settings' },
 ]
 
 function titleCase(value: string) { return value.replace(/(^|\s)\S/g, letter => letter.toUpperCase()) }

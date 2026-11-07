@@ -14,7 +14,7 @@ const label = (value: string) => value.replace(/(^|\s)\S/g, letter => letter.toU
 const dateLabel = (value: string | null) => value ? new Intl.DateTimeFormat('en', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`)) : 'Date unavailable'
 const sourceLink = (value: string) => { try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined } catch { return undefined } }
 
-function useProduct() {
+export function useProduct() {
   const [params, setParams] = useSearchParams()
   const [products, setProducts] = useState<Product[] | null>(null)
   const [error, setError] = useState(false)
@@ -38,17 +38,17 @@ function useProduct() {
 }
 type ProductState = ReturnType<typeof useProduct>
 
-function AnalyticsShell({ state, eyebrow, title, subtitle, children }: { state: ProductState; eyebrow: string; title: string; subtitle: string; children: React.ReactNode }) {
+export function AnalyticsShell({ state, eyebrow, title, subtitle, children }: { state: ProductState; eyebrow: string; title: string; subtitle: string; children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   return <div className={`dashboard ${collapsed ? 'sidebar-collapsed' : ''}`}><Sidebar collapsed={collapsed} setCollapsed={setCollapsed} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} productId={state.productId} /><main className="d-main a-main"><header className="d-header"><div className="d-header-top"><button className="d-menu-toggle" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={20} /></button><p className="d-eyebrow">{state.product?.name || eyebrow}</p><div className="d-header-actions"><label className="d-product-select"><span className="sr-only">Select product</span><select value={state.productId} onChange={event => state.update({ product: event.target.value })} disabled={!state.products?.length}>{state.products?.length ? state.products.map(product => <option key={product.id} value={product.id}>{product.name}</option>) : <option value="">{state.error ? 'Products unavailable' : 'Loading products…'}</option>}</select></label><button className="d-refresh" aria-label="Refresh page data" title="Refresh data" onClick={state.reload}><RefreshCw size={17} /></button></div></div><h1>{title}</h1><p>{subtitle}</p></header>{state.error ? <div className="d-banner" role="alert">The backend could not be reached. Check FastAPI and refresh.</div> : state.products?.length === 0 ? <div className="d-banner">No products are available.</div> : children}</main></div>
 }
 
 function Stars({ rating }: { rating: number }) { return <span className="d-stars" aria-label={`${rating} out of 5 stars`}>{Array.from({ length: 5 }, (_, index) => <Star key={index} size={13} fill={index < rating ? 'currentColor' : 'none'} strokeWidth={1.4} />)}</span> }
-function Skeleton() { return <div className="a-skeleton" role="status" aria-label="Loading data"><span /><span /><span /></div> }
+export function Skeleton() { return <div className="a-skeleton" role="status" aria-label="Loading data"><span /><span /><span /></div> }
 function Empty({ children }: { children: React.ReactNode }) { return <div className="a-empty">{children}</div> }
-function ErrorBox({ retry }: { retry: () => void }) { return <div className="a-error" role="alert">Data could not be loaded. <button onClick={retry}>Try again</button></div> }
-function Coverage({ progress }: { progress: Progress | null }) {
+export function ErrorBox({ retry }: { retry: () => void }) { return <div className="a-error" role="alert">Data could not be loaded. <button onClick={retry}>Try again</button></div> }
+export function Coverage({ progress }: { progress: Progress | null }) {
   if (!progress) return <div className="a-coverage">Classification coverage unavailable.</div>
   const percent = progress.total_reviews ? (progress.analyzed / progress.total_reviews * 100).toFixed(1) : '0.0'
   return <div className="a-coverage"><strong>{progress.analyzed} of {progress.total_reviews} reviews analyzed · {percent}%</strong><span>Version {progress.version} · {progress.failed} failed · {progress.pending} pending. Results describe only the analyzed sample and are not representative of all reviews.</span></div>

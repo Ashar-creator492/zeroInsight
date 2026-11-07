@@ -11,6 +11,11 @@ const ReviewExplorer = lazy(() => import('./AnalyticsPages').then(module => ({ d
 const SentimentPage = lazy(() => import('./AnalyticsPages').then(module => ({ default: module.SentimentPage })))
 const ComplaintPage = lazy(() => import('./AnalyticsPages').then(module => ({ default: module.ComplaintPage })))
 
+const InsightsPage = lazy(() => import('./FeaturePages').then(module => ({ default: module.InsightsPage })))
+const AskPage = lazy(() => import('./FeaturePages').then(module => ({ default: module.AskPage })))
+const InvestigationsPage = lazy(() => import('./FeaturePages').then(module => ({ default: module.InvestigationsPage })))
+const SettingsPage = lazy(() => import('./FeaturePages').then(module => ({ default: module.SettingsPage })))
+
 const capabilities: { number: string; title: string; text: string; icon: LucideIcon }[] = [
   { number: '01', title: 'Analyze reviews', text: 'Bring customer feedback into a clearer, structured view.', icon: MessageSquareText },
   { number: '02', title: 'Detect complaints', text: 'Surface recurring customer-reported experiences.', icon: ScanSearch },
@@ -114,5 +119,5 @@ function LandingPage() {
 }
 
 export default function App() {
-  return <Suspense fallback={<main style={{ padding: '3rem' }}>Loading dashboard…</main>}><Routes><Route path="/" element={<LandingPage />} /><Route path="/dashboard" element={<Dashboard />} /><Route path="/dashboard/reviews" element={<ReviewExplorer />} /><Route path="/dashboard/sentiment" element={<SentimentPage />} /><Route path="/dashboard/complaints" element={<ComplaintPage />} /><Route path="*" element={<LandingPage />} /></Routes></Suspense>
+  return <Suspense fallback={<main style={{ padding: '3rem' }}>Loading dashboard…</main>}><Routes><Route path="/" element={<LandingPage />} /><Route path="/dashboard" element={<Dashboard />} /><Route path="/dashboard/reviews" element={<ReviewExplorer />} /><Route path="/dashboard/sentiment" element={<SentimentPage />} /><Route path="/dashboard/complaints" element={<ComplaintPage />} /><Route path="/dashboard/insights" element={<InsightsPage />} /><Route path="/dashboard/ask" element={<AskPage />} /><Route path="/dashboard/investigations" element={<InvestigationsPage />} /><Route path="/dashboard/settings" element={<SettingsPage />} /><Route path="*" element={<LandingPage />} /></Routes></Suspense>
 }
