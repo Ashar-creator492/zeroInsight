@@ -48,6 +48,8 @@ class ReviewClassification(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     sentiment: Mapped[str | None] = mapped_column(String(20))
     complaint_categories: Mapped[list[str] | None] = mapped_column(JSON)
+    complaint_evidence: Mapped[list[dict] | None] = mapped_column(JSON)
+    unavailable_evidence: Mapped[list[dict] | None] = mapped_column(JSON)
     praised_features: Mapped[list[dict] | None] = mapped_column(JSON)
     general_praise: Mapped[list[str] | None] = mapped_column(JSON)
     negative_experiences: Mapped[list[str] | None] = mapped_column(JSON)

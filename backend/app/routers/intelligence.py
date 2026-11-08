@@ -60,6 +60,8 @@ def classifications(product_id: str, page: int = Query(1, ge=1), page_size: int 
     rows = db.scalars(query.order_by(ReviewClassification.review_id).offset((page - 1) * page_size).limit(page_size)).all()
     return {"items": [{"review_id": row.review_id, "status": row.status, "sentiment": row.sentiment if row.status == "completed" else None,
                        "complaint_categories": row.complaint_categories if row.status == "completed" else None,
+                       "complaint_evidence": row.complaint_evidence if row.status == "completed" else None,
+                       "unavailable_evidence": row.unavailable_evidence if row.status == "completed" else None,
                        "praised_features": row.praised_features if row.status == "completed" else None,
                        "general_praise": row.general_praise if row.status == "completed" else None,
                        "negative_experiences": row.negative_experiences if row.status == "completed" else None,

@@ -46,6 +46,7 @@ def pilot_reviews(reviews: list[Review]) -> list[Review]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Classify Luna reviews with Groq")
     parser.add_argument("--all", action="store_true", help="Process all Luna reviews after explicit pilot approval")
+    parser.add_argument("--stop-on-rate-limit", action="store_true", help="Stop immediately on any rate limit")
     parser.add_argument("--limit", type=int, default=25, help="Maximum reviews in an approved full-batch run")
     parser.add_argument("--source-ids", nargs="+", help="Classify only these real Luna source IDs for validation")
     args = parser.parse_args()
@@ -79,7 +80,7 @@ def main() -> None:
         chain = make_chain(settings.groq_api_key, settings.groq_model)
         counts = process_reviews(db, chain, settings.groq_model, selected,
                                  daily_token_cap=160_000,
-                                 pacer=RequestPacer())
+                                 pacer=RequestPacer(), stop_on_rate_limit=args.stop_on_rate_limit)
         print(json.dumps(counts), flush=True)
         if not args.all:
             for review in selected:

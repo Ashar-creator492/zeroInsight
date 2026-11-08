@@ -24,8 +24,12 @@ def progress(db: Session, model_name: str, product_id: str = "luna-smartwatch") 
     done = sum(row.status == "completed" for row in rows)
     failed = sum(row.status == "failed" for row in rows)
     failed_by_type = Counter(row.error_type or "Unknown" for row in rows if row.status == "failed")
-    cooldowns = [row.rate_limit_info.get("retry_at") for row in rows
-                 if row.status == "failed" and row.rate_limit_info and row.rate_limit_info.get("retry_at")]
+    rate_limits = db.scalars(select(ReviewClassification).where(
+        ReviewClassification.model_name == model_name, ReviewClassification.status == "failed",
+        ReviewClassification.error_type == "RateLimitError"
+    )).all()
+    cooldowns = [row.rate_limit_info.get("retry_at") for row in rate_limits
+                 if row.rate_limit_info and row.rate_limit_info.get("retry_at")]
     future_cooldowns = [value for value in cooldowns if datetime.fromisoformat(value) > datetime.now(timezone.utc)]
     return {"product_id": product_id, "model_name": model_name, "version": CLASSIFICATION_VERSION,
             "total_reviews": total, "analyzed": done, "failed": failed, "pending": total - done - failed,

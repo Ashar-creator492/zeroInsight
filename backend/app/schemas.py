@@ -16,6 +16,8 @@ class ReviewAnalysis(BaseModel):
 
     sentiment: str | None
     complaint_categories: list[str] | None
+    complaint_evidence: list[dict] | None
+    unavailable_evidence: list[dict] | None
     praised_features: list[dict] | None
     general_praise: list[str] | None
     negative_experiences: list[str] | None
