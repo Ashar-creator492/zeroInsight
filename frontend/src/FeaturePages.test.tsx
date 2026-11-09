@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { api } from './api'
 import { AskPage, InsightsPage, InvestigationsPage, SettingsPage } from './FeaturePages'
 
-vi.mock('./api', () => ({ api: { products: vi.fn(), progress: vi.fn(), complaintBreakdown: vi.fn(), searchReviews: vi.fn() } }))
+vi.mock('./api', () => ({ api: { products: vi.fn(), progress: vi.fn(), complaintBreakdown: vi.fn(), searchReviews: vi.fn(), ask: vi.fn() } }))
 vi.mock('recharts', () => {
   const Box = ({ children }: { children?: ReactNode }) => <div>{children}</div>
   return { Area: Box, AreaChart: Box, Bar: Box, BarChart: Box, CartesianGrid: Box, Cell: Box, Pie: Box, PieChart: Box, ResponsiveContainer: Box, Tooltip: Box, XAxis: Box, YAxis: Box }
@@ -28,11 +28,16 @@ describe('future AI interfaces', () => {
     expect(screen.getByRole('link', { name: /Explore the evidence/ }).getAttribute('href')).toContain('category=battery')
     expect((screen.getByRole('button', { name: /Generate recommendation/ }) as HTMLButtonElement).disabled).toBe(true)
   })
-  it('provides a disabled chat and citation empty state', async () => {
+  it('sends a question and displays linked evidence', async () => {
+    vi.mocked(api.ask).mockResolvedValue({ claims: [{ text: 'A customer liked the battery.', review_ids: ['21'], evidence_quote: 'Battery lasts all day' }], sources: [{ id: 'a', source_id: '21', product_id: product, review_text: 'Battery lasts all day', title: null, rating: 5, review_date: null, source_url: 'https://example.test', similarity: 0.7 }], message: null })
     show(<AskPage />)
     expect(await screen.findByText('No conversations yet.')).toBeTruthy()
-    expect((screen.getByLabelText('Ask a question') as HTMLInputElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: 'Send message' }) as HTMLButtonElement).disabled).toBe(true)
+    const input = screen.getByLabelText('Ask a question')
+    fireEvent.change(input, { target: { value: 'battery?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+    expect(await screen.findByText('A customer liked the battery.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: '[21]' }).getAttribute('href')).toBe('#citation-21')
+    expect(screen.getByRole('link', { name: /Open review/ }).getAttribute('href')).toContain('search=21')
   })
   it('keeps investigation decisions disabled', async () => {
     show(<InvestigationsPage />)

@@ -1,3 +1,5 @@
+export interface ChatSource { id: string; source_id: string; product_id: string; review_text: string; title: string | null; rating: number; review_date: string | null; source_url: string; similarity: number }
+export interface ChatAnswer { claims: { text: string; review_ids: string[]; evidence_quote: string }[]; sources: ChatSource[]; message: string | null }
 export interface Product { id: string; name: string }
 export interface ReviewAnalysis {
   sentiment: string | null; complaint_categories: string[] | null
@@ -38,6 +40,14 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export const api = {
+  ask: async (question: string, productId: string): Promise<ChatAnswer> => {
+    const response = await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, product_id: productId }) })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(typeof body.detail === 'string' ? body.detail : 'Unable to get an answer. Please try again.')
+    }
+    return response.json() as Promise<ChatAnswer>
+  },
   products: (signal?: AbortSignal) => get<Product[]>('/api/products', signal),
   summary: (id: string, signal?: AbortSignal) => get<Summary>(`/api/products/${encodeURIComponent(id)}/summary`, signal),
   reviews: (id: string, signal?: AbortSignal) => get<ReviewsPage>(`/api/products/${encodeURIComponent(id)}/reviews?page=1&page_size=3`, signal),

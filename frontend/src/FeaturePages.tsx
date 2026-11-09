@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, BookOpen, CircleCheck, FileSearch, GitBranch, LockKeyhole, MessageSquareText, ShieldCheck, Sparkles } from 'lucide-react'
 import { api } from './api'
-import type { ComplaintBreakdown, Progress, ReviewsPage } from './api'
+import type { ChatAnswer, ComplaintBreakdown, Progress, ReviewsPage } from './api'
 import { AnalyticsShell, Coverage, ErrorBox, Skeleton, useProduct } from './AnalyticsPages'
 import './features.css'
 
@@ -51,10 +51,29 @@ export function InsightsPage() {
 
 export function AskPage() {
   const state = useProduct()
-  return <AnalyticsShell state={state} eyebrow="Evidence-backed answers" title="Ask ZeroInsight" subtitle="A future workspace for questions grounded in customer feedback.">
-    <div className="f-workspace"><aside className="d-card f-card f-history"><p className="d-eyebrow">Conversations</p><h2>Chat history</h2><div className="f-history-empty"><MessageSquareText size={22} /><p>No conversations yet.</p><small>History will appear when the assistant is available.</small></div><button disabled>New conversation · Coming later</button></aside>
-    <section className="d-card f-chat"><div className="f-chat-head"><div><span className="f-icon"><Sparkles size={18} /></span><div><strong>ZeroInsight assistant</strong><small>Evidence-backed answers · Future phase</small></div></div><span className="f-tag">Unavailable</span></div><div className="f-chat-body"><span className="f-chat-mark"><Sparkles size={27} /></span><h2>Ask better questions.</h2><p>Review-based answers and citations will be available when the question-answering workflow is implemented.</p><div className="f-suggestions"><button disabled>What do customers say about battery life?</button><button disabled>Which features receive praise?</button><button disabled>What should we investigate?</button></div></div><div className="f-composer"><label className="sr-only" htmlFor="future-question">Ask a question</label><input id="future-question" disabled placeholder="Question answering is coming in a future phase" /><button disabled aria-label="Send message"><ArrowRight size={18} /></button></div></section>
-    <aside className="d-card f-card f-citations"><p className="d-eyebrow">Sources</p><h2>Review citations</h2><BookOpen size={25} /><p>Sources for an answer will appear here.</p><small>No answer or citations are available yet.</small></aside></div>
+  const [question, setQuestion] = useState('')
+  const [messages, setMessages] = useState<{ question: string; answer: ChatAnswer }[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [selected, setSelected] = useState<number | null>(null)
+  const answer = selected === null ? null : messages[selected]?.answer
+  async function send(text: string) {
+    const value = text.trim()
+    if (!value || !state.productId || loading) return
+    setLoading(true); setError(''); setQuestion(value)
+    try {
+      const result = await api.ask(value, state.productId)
+      setMessages(previous => [...previous, { question: value, answer: result }])
+      setSelected(messages.length); setQuestion('')
+    } catch (err) { setError(err instanceof Error ? err.message : 'Unable to get an answer. Please try again.') }
+    finally { setLoading(false) }
+  }
+  return <AnalyticsShell state={state} eyebrow="Evidence-backed answers" title="Ask ZeroInsight" subtitle="Explore Luna customer feedback with review-backed answers.">
+    <div className="f-workspace"><aside className="d-card f-card f-history"><p className="d-eyebrow">Conversations</p><h2>Chat history</h2>{messages.length ? <div className="f-chat-history">{messages.map((message, index) => <button key={index} onClick={() => setSelected(index)} aria-current={selected === index ? 'true' : undefined}>{message.question}</button>)}</div> : <div className="f-history-empty"><MessageSquareText size={22} /><p>No conversations yet.</p><small>Your questions appear here during this session.</small></div>}<button disabled={loading || !messages.length} onClick={() => { setMessages([]); setSelected(null); setError(''); setQuestion('') }}>New conversation</button></aside>
+    <section className="d-card f-chat"><div className="f-chat-head"><div><span className="f-icon"><Sparkles size={18} /></span><div><strong>ZeroInsight assistant</strong><small>Answers from customer reviews</small></div></div><span className="f-tag">Luna reviews</span></div>
+    {answer ? <div className="f-chat-conversation" aria-live="polite"><p className="f-user-question" dir="auto">{messages[selected!].question}</p>{answer.message && <p className="f-answer-message" dir="auto">{answer.message}</p>}{answer.claims.map((claim, index) => <p className="f-answer-message" dir="auto" key={index}>{claim.text} {claim.review_ids.map(id => <a key={id} href={`#citation-${encodeURIComponent(id)}`}>[{id}]</a>)}</p>)}<small>Customer reports, not verified product facts. Search results are not representative of all reviews.</small></div> : <div className="f-chat-body"><span className="f-chat-mark"><Sparkles size={27} /></span><h2>Ask better questions.</h2><p>Explore customer experiences and follow citations back to the original reviews.</p><div className="f-suggestions">{['What do customers say about battery life?', 'What do customers say about the display?', 'What do customers say about connectivity?'].map(item => <button key={item} disabled={loading || !state.productId} onClick={() => void send(item)}>{item}</button>)}</div></div>}
+    {loading && <p className="f-chat-status" role="status">Searching reviews and preparing an answer…</p>}{error && <p className="f-chat-error" role="alert">{error}</p>}<form className="f-composer" onSubmit={event => { event.preventDefault(); void send(question) }}><label className="sr-only" htmlFor="chat-question">Ask a question</label><input id="chat-question" value={question} onChange={event => setQuestion(event.target.value)} maxLength={500} disabled={loading} placeholder="Ask about Luna customer reviews" /><button disabled={loading || !question.trim() || !state.productId} aria-label="Send message"><ArrowRight size={18} /></button></form></section>
+    <aside className="d-card f-card f-citations"><p className="d-eyebrow">Sources</p><h2>Review citations</h2>{answer?.sources.length ? answer.sources.map(source => <article className="f-quote" id={`citation-${encodeURIComponent(source.source_id)}`} key={source.id}><div><strong>Review {source.source_id}</strong><span>{source.rating} / 5</span></div><p dir="auto">{source.review_text}</p><Link to={`/dashboard/reviews?product=${encodeURIComponent(source.product_id)}&search=${encodeURIComponent(source.source_id)}`}>Open review <ArrowRight size={13} /></Link><a href={source.source_url} target="_blank" rel="noreferrer">Original source ↗</a></article>) : <><BookOpen size={25} /><p>Sources for an answer will appear here.</p><small>No supporting reviews to show yet.</small></>}</aside></div>
   </AnalyticsShell>
 }
 
