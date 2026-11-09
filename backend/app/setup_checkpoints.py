@@ -1,3 +1,4 @@
+# Initialize the PostgreSQL tables used by LangGraph checkpoints.
 """Initialize the LangGraph PostgreSQL checkpoint tables once."""
 from langgraph.checkpoint.postgres import PostgresSaver
 from sqlalchemy.engine import make_url
