@@ -1,9 +1,11 @@
+# Environment-backed settings for database, model, and application security.
 from functools import lru_cache
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# Load backend configuration from the environment without putting secrets in the frontend.
 class Settings(BaseSettings):
     database_url: str
     groq_api_key: str | None = None
