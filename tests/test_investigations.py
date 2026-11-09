@@ -5,8 +5,6 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
-import pytest
-
 from backend.app.main import app
 from backend.app.routers import investigations as api
 from backend.app.services import investigation as agent
@@ -42,8 +40,20 @@ def test_invalid_quotes_and_single_review_patterns_fail_closed():
     assert agent.draft(base)['report']['evidence_status'] == 'insufficient evidence'
     for item in [{**FINDING, 'citations': [{'review_id': '7', 'evidence_quote': 'not in review'}]},
                  {**FINDING, 'kind': 'pattern'}, {**FINDING, 'text': '50% report this'}]:
-        with pytest.raises(ValueError):
-            agent.draft({**base, 'analysis': {'findings': [item]}})
+        assert agent.draft({**base, 'analysis': {'findings': [item]}})['report']['evidence_status'] == 'insufficient evidence'
+
+
+def test_quote_references_resolve_only_to_retrieved_evidence():
+    good = {**FINDING, 'citations': [{'review_id': '7', 'quote_id': 'review_text'}]}
+    invalid = [
+        {**good, 'citations': [{'review_id': 'missing', 'quote_id': 'review_text'}]},
+        {**good, 'citations': [{'review_id': '7', 'quote_id': 'missing'}]},
+        {**good, 'citations': [{'review_id': '7', 'quote_id': 'title'}]},
+        {**good, 'citations': [*good['citations'], {'review_id': 'missing', 'quote_id': 'review_text'}]},
+    ]
+    report = agent.draft({'evidence': EVIDENCE, 'analysis': {'findings': [good, *invalid]}})['report']
+    assert report['findings'] == [FINDING]
+    assert agent.draft({'evidence': EVIDENCE, 'analysis': {'findings': invalid}})['report']['evidence_status'] == 'insufficient evidence'
 
 
 def test_endpoints_pause_and_record_revision(monkeypatch):
@@ -76,11 +86,11 @@ def test_analysis_uses_structured_model_and_original_evidence(monkeypatch):
             return self
         def invoke(self, messages):
             calls.append(messages)
-            return {'findings': [FINDING]}
+            return {'findings': [{**FINDING, 'citations': [{'review_id': '7', 'quote_id': 'review_text'}]}]}
     monkeypatch.setattr(agent, 'ChatGroq', MockGroq)
     monkeypatch.setattr(agent, 'get_settings', lambda: SimpleNamespace(groq_api_key='test-key', groq_model='openai/gpt-oss-20b'))
     result = agent.analyze({'request': 'battery', 'evidence': EVIDENCE})
-    assert result['analysis']['findings'] == [FINDING]
+    assert agent.draft({'evidence': EVIDENCE, **result})['report']['findings'] == [FINDING]
     assert 'Battery runs out early' in calls[0][1].content
     assert agent.analyze({'request': 'battery', 'evidence': []})['analysis']['findings'] == []
     assert len(calls) == 1
