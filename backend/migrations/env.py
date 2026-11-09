@@ -1,3 +1,4 @@
+# Configure Alembic migration execution for offline and online database access.
 from logging.config import fileConfig
 
 from alembic import context
@@ -13,12 +14,14 @@ if config.config_file_name and config.get_section("loggers"):
 target_metadata = Base.metadata
 
 
+# Generate migrations without opening a database connection.
 def run_migrations_offline() -> None:
     context.configure(url=get_settings().database_url, target_metadata=target_metadata, literal_binds=True)
     with context.begin_transaction():
         context.run_migrations()
 
 
+# Run migrations against the configured database connection.
 def run_migrations_online() -> None:
     engine = create_engine(get_settings().database_url, poolclass=pool.NullPool)
     with engine.connect() as connection:
