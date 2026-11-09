@@ -1,3 +1,4 @@
+# Expose classification progress and product-specific analytics.
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
