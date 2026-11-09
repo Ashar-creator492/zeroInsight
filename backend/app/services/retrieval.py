@@ -1,3 +1,4 @@
+# Index complete reviews and search their PostgreSQL vector embeddings.
 """Local whole-review embeddings and PostgreSQL similarity retrieval."""
 from functools import lru_cache
 
@@ -9,11 +10,13 @@ from sqlalchemy.orm import Session
 from backend.app.config import get_settings
 
 
+# Reuse the configured local embedding model for indexing and queries.
 @lru_cache(maxsize=1)
 def embeddings():
     return HuggingFaceEmbeddings(model_name=get_settings().embedding_model, cache_folder=".cache/huggingface/hub")
 
 
+# Index each whole review once per model and refresh vectors when its fingerprint changes.
 def index_reviews(db: Session, batch_size: int = 32) -> dict[str, int]:
     model = get_settings().embedding_model
     total = 0
@@ -46,6 +49,7 @@ def index_reviews(db: Session, batch_size: int = 32) -> dict[str, int]:
     return {"indexed": total}
 
 
+# Filter by product and optional rating while ranking current embeddings by vector similarity.
 def retrieve_reviews(db: Session, question: str, product_id: str = "luna-smartwatch",
                      rating: int | None = None, limit: int = 5) -> list[dict]:
     vector = embeddings().embed_query(question)
