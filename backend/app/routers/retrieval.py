@@ -1,3 +1,4 @@
+# Expose filtered semantic review retrieval.
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
