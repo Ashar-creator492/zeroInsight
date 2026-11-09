@@ -1,3 +1,4 @@
+# Create the initial product and review tables.
 """Create products and reviews tables."""
 
 from alembic import op
