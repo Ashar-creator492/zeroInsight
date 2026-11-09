@@ -1,3 +1,4 @@
+# Add classification attempt tracking.
 """Track classification attempts and validation failures."""
 
 from alembic import op
