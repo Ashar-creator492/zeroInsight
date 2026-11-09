@@ -1,3 +1,4 @@
+# Create storage for versioned review classifications.
 """Store Groq review interpretations and processing status."""
 
 from alembic import op
