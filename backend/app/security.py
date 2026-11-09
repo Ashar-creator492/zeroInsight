@@ -1,3 +1,4 @@
+# Provide local request limits, administrator checks, and safe provider status mapping.
 """Small single-process safeguards; public deployments need a shared gateway."""
 from collections import deque
 from secrets import compare_digest
@@ -12,6 +13,7 @@ _hits: dict[str, deque[float]] = {}
 _lock = Lock()
 
 
+# Apply a process-local rolling request limit; this is not a shared deployment-wide limiter.
 def limit_ai_requests(request: Request) -> None:
     now = monotonic()
     client = request.client.host if request.client else 'unknown'
@@ -27,6 +29,7 @@ def limit_ai_requests(request: Request) -> None:
         hits.append(now)
 
 
+# Fail closed when the configured bearer token is absent or does not match in constant time.
 def require_decision_authorization(authorization: str | None = Header(default=None)) -> None:
     configured = get_settings().admin_token
     expected = configured.get_secret_value() if configured else ''
@@ -35,6 +38,7 @@ def require_decision_authorization(authorization: str | None = Header(default=No
         raise HTTPException(status_code=401, detail='Unauthorized.', headers={'WWW-Authenticate': 'Bearer'})
 
 
+# Map provider failures to safe HTTP statuses without exposing error details.
 def provider_status(exc: Exception) -> int:
     if isinstance(exc, RateLimitError):
         return 429
