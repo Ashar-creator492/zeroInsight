@@ -1,3 +1,4 @@
+# Aggregate current-version review classifications and processing progress.
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -8,6 +9,7 @@ from backend.app.models import Review, ReviewClassification
 from backend.app.services.classification import CLASSIFICATION_VERSION
 
 
+# Limit analytics to the selected product, model, version, and unchanged review content.
 def current_query(model_name: str, product_id: str = "luna-smartwatch"):
     return (
         select(ReviewClassification)
@@ -18,6 +20,7 @@ def current_query(model_name: str, product_id: str = "luna-smartwatch"):
     )
 
 
+# Separate completed, failed, and pending reviews and expose recorded processing diagnostics.
 def progress(db: Session, model_name: str, product_id: str = "luna-smartwatch") -> dict:
     total = db.scalar(select(func.count()).select_from(Review).where(Review.product_id == product_id)) or 0
     rows = db.scalars(current_query(model_name, product_id)).all()
@@ -41,6 +44,7 @@ def progress(db: Session, model_name: str, product_id: str = "luna-smartwatch") 
             "evidence_errors": sum(row.evidence_error_count or 0 for row in rows)}
 
 
+# Aggregate only successfully completed classifications for the selected product.
 def distribution(db: Session, model_name: str, field: str, product_id: str = "luna-smartwatch") -> dict:
     rows = db.scalars(current_query(model_name, product_id).where(ReviewClassification.status == "completed")).all()
     counts = Counter()
