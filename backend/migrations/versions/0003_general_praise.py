@@ -1,3 +1,4 @@
+# Add storage for general praise in review classifications.
 """Separate generic praise from evidence-backed feature praise."""
 
 from alembic import op
