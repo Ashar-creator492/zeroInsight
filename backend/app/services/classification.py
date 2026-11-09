@@ -1,3 +1,4 @@
+# Classify reviews with structured Groq responses, grounding checks, and checkpoints.
 """One-review Groq classification and resumable persistence."""
 
 import logging
@@ -36,6 +37,7 @@ class PraisedFeature(BaseModel):
     evidence_quote: str
 
 
+# Validate the versioned structured sentiment, complaint, and praise output.
 class ClassificationResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
     sentiment: Sentiment
@@ -53,6 +55,7 @@ GENERIC_FEATURES = {"good", "great", "awesome", "brilliant", "nice", "best", "ot
                     "زیرو کمپنی", "zero lifestyle", "luna smartwatch"}
 
 
+# Space requests and account for a conservative rolling token budget.
 class RequestPacer:
     """Serialize calls and reserve a conservative rolling minute token budget."""
 
@@ -87,6 +90,7 @@ class RequestPacer:
             self.recent.append((started, input_tokens + output_tokens))
 
 
+# Extract safe quota diagnostics and retry timing without storing provider response content.
 def rate_limit_details(exc, now: datetime | None = None) -> dict:
     """Keep only safe quota headers; Groq's request and token headers have different windows."""
     headers = getattr(getattr(exc, "response", None), "headers", {})
@@ -156,6 +160,7 @@ def generic_praise(phrase: str) -> bool:
     )) or bool(re.fullmatch(r"(?:بھت |بہت )?(?:بھترین|بہترین|اچھی|اچھا)(?: گھڑی)?(?: ھے| ہے)?", words))
 
 
+# Check evidence against original review text and reject unsupported feature interpretations.
 def validate_grounding(result: ClassificationResult, review: Review) -> None:
     sources = (review.title or "", review.review_text)
     for feature in result.praised_features:
@@ -185,6 +190,7 @@ def validate_grounding(result: ClassificationResult, review: Review) -> None:
 
 
 
+# Request strict structured output from the configured Groq model.
 def make_chain(api_key: str, model_name: str):
     from langchain_groq import ChatGroq
 
@@ -194,6 +200,7 @@ def make_chain(api_key: str, model_name: str):
     return llm.with_structured_output(ClassificationResult, method="json_schema", strict=True, include_raw=True)
 
 
+# Apply bounded retries and local validation, recording attempt and token diagnostics.
 def classify_review(chain, review: Review, retries: int = 3, sleep=time.sleep,
                     usage_tracker: dict | None = None, pacer: RequestPacer | None = None,
                     stop_on_rate_limit: bool = False):
@@ -297,6 +304,7 @@ def classify_review(chain, review: Review, retries: int = 3, sleep=time.sleep,
             sleep(delay)
 
 
+# Skip matching completed records and commit each attempted review as a resumable checkpoint.
 def process_reviews(db: Session, chain, model_name: str, reviews: list[Review],
                     daily_token_cap: int | None = None, pause_seconds: float = 0,
                     sleep=time.sleep, pacer: RequestPacer | None = None,
