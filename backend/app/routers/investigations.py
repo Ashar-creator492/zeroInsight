@@ -1,3 +1,4 @@
+# Start, inspect, and authorize decisions on checkpointed investigations.
 import logging
 from contextlib import contextmanager
 from typing import Literal
@@ -27,6 +28,7 @@ class DecisionRequest(BaseModel):
     notes: str = Field(default="", max_length=2000)
 
 
+# Open a PostgreSQL checkpointer so graph state can survive application restarts.
 @contextmanager
 def graph_context():
     url = make_url(get_settings().database_url).set(drivername="postgresql")
@@ -34,6 +36,7 @@ def graph_context():
         yield build_graph(saver)
 
 
+# Translate persisted graph state into an API status, including the human approval pause.
 def snapshot(graph, thread_id: str):
     state = graph.get_state({"configurable": {"thread_id": thread_id}})
     if not state.values:
@@ -83,6 +86,7 @@ def get_investigation(investigation_id: UUID):
         return snapshot(graph, str(investigation_id))
 
 
+# Resume only an investigation that is waiting for an authorized human decision.
 @router.post("/{investigation_id}/decision", dependencies=[Depends(limit_ai_requests), Depends(require_decision_authorization)])
 def decide_investigation(investigation_id: UUID, decision: DecisionRequest):
     thread_id = str(investigation_id)
