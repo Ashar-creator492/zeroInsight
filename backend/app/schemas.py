@@ -1,3 +1,4 @@
+# Response schemas for products, reviews, and review analytics.
 from datetime import date
 from typing import Literal
 
