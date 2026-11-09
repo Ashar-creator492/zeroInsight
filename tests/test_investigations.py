@@ -8,6 +8,7 @@ from langgraph.types import Command
 from backend.app.main import app
 from backend.app.routers import investigations as api
 from backend.app.services import investigation as agent
+from backend.app.security import require_decision_authorization
 
 
 EVIDENCE = [{"id": "a", "source_id": "7", "product_id": "luna-smartwatch", "review_text": "Battery runs out early", "title": None, "rating": 2, "review_date": None, "source_url": "https://example.test", "similarity": 0.7}]
@@ -67,6 +68,8 @@ def test_endpoints_pause_and_record_revision(monkeypatch):
     assert response.status_code == 201 and response.json()['status'] == 'awaiting_review'
     ident = response.json()['id']
     assert client.get(f'/api/investigations/{ident}').json()['report']['findings'] == [FINDING]
+    assert client.post(f'/api/investigations/{ident}/decision', json={'decision': 'approve'}).status_code == 403
+    app.dependency_overrides[require_decision_authorization] = lambda: None
     decision = client.post(f'/api/investigations/{ident}/decision', json={'decision': 'request_revision', 'notes': 'More detail'})
     assert decision.json()['status'] == 'request_revision'
     assert decision.json()['stage'] == 'revision_requested'
@@ -74,6 +77,7 @@ def test_endpoints_pause_and_record_revision(monkeypatch):
     assert client.post(f'/api/investigations/{ident}/decision', json={'decision': 'approve'}).status_code == 409
     assert client.get(f'/api/investigations/{uuid4()}').status_code == 404
     assert client.post('/api/investigations', json={'request': 'battery', 'product_id': 'other'}).status_code == 422
+    app.dependency_overrides.pop(require_decision_authorization, None)
 
 
 def test_analysis_uses_structured_model_and_original_evidence(monkeypatch):
@@ -94,3 +98,19 @@ def test_analysis_uses_structured_model_and_original_evidence(monkeypatch):
     assert 'Battery runs out early' in calls[0][1].content
     assert agent.analyze({'request': 'battery', 'evidence': []})['analysis']['findings'] == []
     assert len(calls) == 1
+
+
+def test_investigation_timeout_is_sanitized(monkeypatch, caplog):
+    class FailedGraph:
+        def invoke(self, *args):
+            raise TimeoutError('private credential and customer text')
+        def get_state(self, *args):
+            return SimpleNamespace(next=('analyze_evidence',))
+    @contextmanager
+    def failing_graph():
+        yield FailedGraph()
+    monkeypatch.setattr(api, 'graph_context', failing_graph)
+    response = TestClient(app).post('/api/investigations', json={'request': 'battery'})
+    assert response.status_code == 504
+    assert 'private credential' not in response.text + caplog.text
+    assert 'stage=analyze_evidence type=TimeoutError' in caplog.text

@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     groq_model: str = "openai/gpt-oss-20b"
+    frontend_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

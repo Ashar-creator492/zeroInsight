@@ -3,13 +3,14 @@ from contextlib import contextmanager
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import make_url
 
 from backend.app.config import get_settings
+from backend.app.security import limit_ai_requests, provider_status, require_decision_authorization
 from backend.app.services.investigation import build_graph
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ def snapshot(graph, thread_id: str):
     return {"id": thread_id, "status": status, **state.values}
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, dependencies=[Depends(limit_ai_requests)])
 def start_investigation(request: InvestigationRequest):
     question = request.request.strip()
     if not question:
@@ -51,12 +52,24 @@ def start_investigation(request: InvestigationRequest):
     thread_id = str(uuid4())
     try:
         with graph_context() as graph:
-            graph.invoke({"request": question, "product_id": request.product_id, "stage": "understand_investigation"},
-                         {"configurable": {"thread_id": thread_id}})
+            try:
+                graph.invoke({"request": question, "product_id": request.product_id, "stage": "understand_investigation"},
+                             {"configurable": {"thread_id": thread_id}})
+            except Exception as exc:
+                stage = "unknown"
+                try:
+                    pending = graph.get_state({"configurable": {"thread_id": thread_id}}).next
+                    allowed = {"understand_investigation", "retrieve_evidence", "analyze_evidence", "draft_report", "human_approval"}
+                    if pending and pending[0] in allowed:
+                        stage = pending[0]
+                except Exception:
+                    pass
+                logger.warning("Investigation failed; thread=%s stage=%s type=%s", thread_id, stage, type(exc).__name__)
+                raise
             return snapshot(graph, thread_id)
-    except Exception:
-        logger.warning("Investigation failed; thread %s", thread_id)
-        raise HTTPException(status_code=503, detail=f"Investigation could not be completed. Check thread {thread_id}.") from None
+    except Exception as exc:
+        logger.warning("Investigation unavailable; thread=%s type=%s", thread_id, type(exc).__name__)
+        raise HTTPException(status_code=provider_status(exc), detail=f"Investigation could not be completed. Check thread {thread_id}.") from None
 
 
 @router.get("/{investigation_id}")
@@ -65,7 +78,7 @@ def get_investigation(investigation_id: UUID):
         return snapshot(graph, str(investigation_id))
 
 
-@router.post("/{investigation_id}/decision")
+@router.post("/{investigation_id}/decision", dependencies=[Depends(require_decision_authorization)])
 def decide_investigation(investigation_id: UUID, decision: DecisionRequest):
     thread_id = str(investigation_id)
     with graph_context() as graph:

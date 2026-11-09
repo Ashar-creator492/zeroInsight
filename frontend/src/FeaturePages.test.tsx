@@ -44,7 +44,7 @@ describe('future AI interfaces', () => {
     expect(await screen.findByText('No reports yet.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Approve' }) as HTMLButtonElement).disabled).toBe(true)
   })
-  it('starts an investigation, saves a revision decision and restores it', async () => {
+  it('starts an investigation, disables decisions and restores it', async () => {
     const result = { id: '123', status: 'awaiting_review', stage: 'human_approval', request: 'battery', product_id: product, evidence: [{ id: 'a', source_id: '21', product_id: product, review_text: 'Battery drains quickly', title: null, rating: 2, review_date: null, source_url: 'https://example.test', similarity: 0.7, retrieval_query: 'complaint' }], report: { findings: [{ kind: 'reported_problem', text: 'A customer reported short battery life.', citations: [{ review_id: '21', evidence_quote: 'Battery drains quickly' }] }], limitations: 'Limited sample.', evidence_status: 'available' } }
     vi.mocked(api.startInvestigation).mockResolvedValue(result)
     vi.mocked(api.decideInvestigation).mockResolvedValue({ ...result, status: 'request_revision', stage: 'revision_requested', decision: { decision: 'request_revision', notes: 'More evidence', decided_at: '2026-01-01T00:00:00Z' } })
@@ -55,10 +55,8 @@ describe('future AI interfaces', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start investigation' }))
     expect(await screen.findByText('A customer reported short battery life.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Review 21' }).getAttribute('href')).toBe('#investigation-review-21')
-    fireEvent.change(screen.getByLabelText('Decision notes'), { target: { value: 'More evidence' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Request revision' }))
-    expect(await screen.findByText(/Human follow-up is required/)).toBeTruthy()
-    expect(api.decideInvestigation).toHaveBeenCalledWith('123', 'request_revision', 'More evidence')
+    expect((screen.getByRole('button', { name: 'Request revision' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText(/Decisions are unavailable until authorization/)).toBeTruthy()
     view.unmount()
     show(<InvestigationsPage />)
     expect(await screen.findByText('A customer reported short battery life.')).toBeTruthy()

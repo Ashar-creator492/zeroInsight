@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from collections import Counter
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -10,18 +11,19 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from backend.app.config import get_settings
+from backend.app.security import limit_ai_requests, provider_status
 from backend.app.database import get_db
 from backend.app.services.retrieval import retrieve_reviews
 from backend.app.services.intelligence import current_query
 from backend.app.models import Review, ReviewClassification
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/chat", tags=["chat"])
+router = APIRouter(prefix="/api/chat", tags=["chat"], dependencies=[Depends(limit_ai_requests)])
 
 
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
-    product_id: str = "luna-smartwatch"
+    product_id: str = Field(default="luna-smartwatch", min_length=1, max_length=100)
     rating: int | None = Field(default=None, ge=1, le=5)
 
 
@@ -136,9 +138,9 @@ def ask(request: ChatRequest, db: Session = Depends(get_db)):
         result = chain.invoke([SystemMessage(content=PROMPT), HumanMessage(content=json.dumps({"question": question, "evidence_selection": "limited current-version classified sample" if "verified_category" in relevant[0] else "similarity search sample", "reviews": evidence}, ensure_ascii=False))])
         if not isinstance(result, GroundedAnswer):
             result = GroundedAnswer.model_validate(result)
-    except Exception:
-        logger.warning("Chat answer generation failed")
-        raise HTTPException(status_code=503, detail="The answer service is unavailable. Please try again later.") from None
+    except Exception as exc:
+        logger.warning("Chat answer generation failed; request=%s type=%s stage=answer_generation", uuid4(), type(exc).__name__)
+        raise HTTPException(status_code=provider_status(exc), detail="The answer service is unavailable. Please try again later.") from None
     by_id = {row["source_id"]: row for row in relevant}
     if not result.claims or any(
         not claim.text.strip() or not claim.review_ids or not claim.evidence_quote.strip()
