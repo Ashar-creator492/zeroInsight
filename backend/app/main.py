@@ -6,6 +6,7 @@ from backend.app.routers.intelligence import router as intelligence_router
 
 from backend.app.routers.retrieval import router as retrieval_router
 from backend.app.routers.chat import router as chat_router
+from backend.app.routers.investigations import router as investigations_router
 
 app = FastAPI(title="ZeroInsight AI", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
@@ -14,6 +15,7 @@ app.include_router(products_router)
 app.include_router(intelligence_router)
 app.include_router(retrieval_router)
 app.include_router(chat_router)
+app.include_router(investigations_router)
 
 
 @app.get("/health")
