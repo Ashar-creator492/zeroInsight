@@ -1,3 +1,4 @@
+# Validate and import Luna CSV records with stable identifiers and quality reporting.
 """Validate and import the supplied Luna review CSV."""
 
 import argparse
@@ -42,6 +43,7 @@ def parse_date(value: str) -> date | None:
     return None
 
 
+# Reject malformed input while retaining repeated review text and stable source identifiers.
 def load_reviews(path: Path) -> tuple[list[dict], dict]:
     errors: list[str] = []
     parsed: list[dict] = []
@@ -110,6 +112,7 @@ def load_reviews(path: Path) -> tuple[list[dict], dict]:
     return parsed, report
 
 
+# Use content fingerprints to skip unchanged imports and update changed source records.
 def import_reviews(session: Session, rows: list[dict]) -> dict[str, int]:
     result = {"inserted": 0, "updated": 0, "unchanged": 0}
     if session.get(Product, PRODUCT_ID) is None:
