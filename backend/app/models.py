@@ -1,3 +1,4 @@
+# Relational product, review, and versioned classification models.
 from datetime import date, datetime, timezone
 
 from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
@@ -14,6 +15,7 @@ class Product(Base):
     reviews: Mapped[list["Review"]] = relationship(back_populates="product")
 
 
+# Preserve the original review and a fingerprint for detecting source changes.
 class Review(Base):
     __tablename__ = "reviews"
     __table_args__ = (
@@ -36,6 +38,7 @@ class Review(Base):
     classifications: Mapped[list["ReviewClassification"]] = relationship(back_populates="review")
 
 
+# Keep analysis, attempts, and evidence scoped to a model and classification version.
 class ReviewClassification(Base):
     __tablename__ = "review_classifications"
     __table_args__ = (UniqueConstraint("review_id", "model_name", "version", name="uq_classification_review_model_version"),)
