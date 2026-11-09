@@ -48,7 +48,11 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 export const api = {
   investigation: (id: string) => get<Investigation>(`/api/investigations/${encodeURIComponent(id)}`),
   startInvestigation: (request: string, productId: string) => postInvestigation('/api/investigations', { request, product_id: productId }),
-  decideInvestigation: (id: string, decision: string, notes: string) => postInvestigation(`/api/investigations/${encodeURIComponent(id)}/decision`, { decision, notes }),
+  verifyAdmin: async (token: string) => {
+    const response = await fetch(`${base}/api/investigations/authorization`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    if (!response.ok) throw new Error(response.status === 401 ? 'Invalid administrator token.' : 'Unable to verify authorization. Please try again.')
+  },
+  decideInvestigation: (id: string, decision: string, notes: string, token: string) => postInvestigation(`/api/investigations/${encodeURIComponent(id)}/decision`, { decision, notes }, token),
   ask: async (question: string, productId: string): Promise<ChatAnswer> => {
     const response = await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, product_id: productId }) })
     if (!response.ok) {
@@ -74,8 +78,10 @@ export const api = {
   complaintBreakdown: (id: string, signal?: AbortSignal) => get<ComplaintBreakdown>(`/api/products/${encodeURIComponent(id)}/intelligence/complaint-breakdown`, signal),
 }
 
-async function postInvestigation(path: string, body: object): Promise<Investigation> {
-  const response = await fetch(`${base}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+async function postInvestigation(path: string, body: object, token?: string): Promise<Investigation> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const response = await fetch(`${base}${path}`, { method: 'POST', headers, body: JSON.stringify(body) })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     throw new Error(typeof error.detail === 'string' ? error.detail : `Request failed (${response.status})`)

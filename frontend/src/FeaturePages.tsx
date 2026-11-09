@@ -82,6 +82,8 @@ export function InvestigationsPage() {
   const state = useProduct()
   const [request, setRequest] = useState('')
   const [notes, setNotes] = useState('')
+  const [adminToken, setAdminToken] = useState('')
+  const [authorized, setAuthorized] = useState(false)
   const [investigation, setInvestigation] = useState<Investigation | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -104,13 +106,22 @@ export function InvestigationsPage() {
   async function decide(decision: string) {
     if (!investigation || busy) return
     setBusy(true); setError('')
-    try { setInvestigation(await api.decideInvestigation(investigation.id, decision, notes)); setNotes('') }
-    catch (err) { setError(err instanceof Error ? err.message : 'Unable to save decision.') }
+    try { setInvestigation(await api.decideInvestigation(investigation.id, decision, notes, adminToken)); setNotes('') }
+    catch (err) {
+      if (err instanceof Error && err.message === 'Unauthorized.') { setAuthorized(false); setAdminToken('') }
+      setError(err instanceof Error ? err.message : 'Unable to save decision.')
+    }
+    finally { setBusy(false) }
+  }
+  async function authorize() {
+    if (!adminToken || busy) return
+    setBusy(true); setError('')
+    try { await api.verifyAdmin(adminToken); setAuthorized(true) }
+    catch (err) { setAuthorized(false); setAdminToken(''); setError(err instanceof Error ? err.message : 'Unable to verify authorization.') }
     finally { setBusy(false) }
   }
   const awaiting = investigation?.status === 'awaiting_review'
-  // Decisions stay unavailable until an authorization mechanism is approved.
-  const decisionsEnabled = false
+  const decisionsEnabled = authorized
   return <AnalyticsShell state={state} eyebrow="Evidence to action" title="Investigation Center" subtitle="Examine customer-reported issues and review the evidence before deciding.">
     <div className="f-notice"><ShieldCheck size={16} /><span>Customer experiences are reports, not verified product defects. Retrieved reviews are a limited sample.</span></div>
     <section className="d-card f-card"><div className="f-heading"><div><p className="d-eyebrow">Investigation request</p><h2>From question to decision</h2></div><span className="f-tag">{investigation ? investigation.status.replaceAll('_', ' ') : 'Ready'}</span></div>
@@ -121,7 +132,8 @@ export function InvestigationsPage() {
     <div className="f-invest-grid"><section className="d-card f-card"><p className="d-eyebrow">Review evidence</p><h2>Evidence panel</h2>{investigation?.evidence?.length ? investigation.evidence.map(review => <article className="f-quote" id={`investigation-review-${encodeURIComponent(review.source_id)}`} key={review.id}><div><strong>Review {review.source_id}</strong><span>{review.rating} / 5</span></div>{review.title && <strong dir="auto">{review.title}</strong>}<p dir="auto">{review.review_text}</p><Link to={`/dashboard/reviews?product=${encodeURIComponent(review.product_id)}&search=${encodeURIComponent(review.source_id)}`}>Open review <ArrowRight size={13} /></Link> <a href={review.source_url} target="_blank" rel="noreferrer">Original source ↗</a></article>) : <div className="f-placeholder"><FileSearch size={25} /><p>No investigation evidence yet.</p></div>}</section>
     <section className="d-card f-card"><p className="d-eyebrow">Investigation report</p><h2>Report &amp; findings</h2>{investigation?.report ? <><p>{investigation.report.limitations}</p>{investigation.report.findings.length ? investigation.report.findings.map((finding, index) => <article className="f-quote" key={index}><strong>{finding.kind.replaceAll('_', ' ')}</strong><p dir="auto">{finding.text}</p>{finding.citations.map((citation, i) => <blockquote dir="auto" key={i}>“{citation.evidence_quote}” <a href={`#investigation-review-${encodeURIComponent(citation.review_id)}`}>Review {citation.review_id}</a></blockquote>)}</article>) : <p>Insufficient evidence to make a supported finding.</p>}</> : <div className="f-placeholder"><BookOpen size={25} /><p>No reports yet.</p></div>}</section>
     <section className="d-card f-card f-approval"><p className="d-eyebrow">Human decision</p><h2>Approval</h2><p>{awaiting ? 'Review the report and evidence before making a decision.' : investigation?.decision ? `Decision: ${investigation.decision.decision.replaceAll('_', ' ')} · ${new Date(investigation.decision.decided_at).toLocaleString()}` : 'No report is awaiting review.'}</p>{investigation?.decision?.notes && <p dir="auto">Notes: {investigation.decision.notes}</p>}{investigation?.decision?.decision === 'request_revision' && <p>Human follow-up is required. Automatic revision is not available.</p>}
-      <label htmlFor="investigation-notes">Decision notes</label><textarea id="investigation-notes" className="f-invest-notes" maxLength={2000} value={notes} onChange={event => setNotes(event.target.value)} disabled={!awaiting || busy || !decisionsEnabled} /><div className="f-approval-actions"><button disabled={!awaiting || busy || !decisionsEnabled} onClick={() => void decide('approve')}>Approve</button><button disabled={!awaiting || busy || !decisionsEnabled} onClick={() => void decide('reject')}>Reject</button><button disabled={!awaiting || busy || !decisionsEnabled} onClick={() => void decide('request_revision')}>Request revision</button></div><small>Decisions are unavailable until authorization is configured. No external action is taken.</small></section></div>
+      <label htmlFor="admin-token">Administrator token</label><form className="f-composer" onSubmit={event => { event.preventDefault(); void authorize() }}><input id="admin-token" type="password" autoComplete="off" value={adminToken} onChange={event => { setAdminToken(event.target.value); setAuthorized(false) }} disabled={busy || authorized} placeholder="Enter token for this session" /><button type="submit" disabled={busy || authorized || !adminToken} aria-label="Verify administrator token"><ArrowRight size={18} /></button></form>{authorized && <button type="button" onClick={() => { setAuthorized(false); setAdminToken('') }}>Clear authorization</button>}
+      <label htmlFor="investigation-notes">Decision notes</label><textarea id="investigation-notes" className="f-invest-notes" maxLength={2000} value={notes} onChange={event => setNotes(event.target.value)} disabled={!awaiting || busy || !decisionsEnabled} /><div className="f-approval-actions"><button disabled={!awaiting || busy || !decisionsEnabled} onClick={() => void decide('approve')}>Approve</button><button disabled={!awaiting || busy || !decisionsEnabled} onClick={() => void decide('reject')}>Reject</button><button disabled={!awaiting || busy || !decisionsEnabled} onClick={() => void decide('request_revision')}>Request revision</button></div><small>{authorized ? 'Authorized for this page session. No external action is taken.' : 'Verify your administrator token to enable decisions. It is held only in this page session.'}</small></section></div>
   </AnalyticsShell>
 }
 

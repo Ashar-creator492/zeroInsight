@@ -32,6 +32,12 @@ def test_validation_redacts_input_and_cors_is_restricted():
     assert allowed.status_code == 200 and denied.status_code == 400
 
 
+def test_unconfigured_admin_token_fails_closed(monkeypatch):
+    monkeypatch.setattr(security, 'get_settings', lambda: SimpleNamespace(admin_token=None))
+    client = TestClient(app)
+    assert client.get('/api/investigations/authorization', headers={'Authorization': 'Bearer anything'}).status_code == 401
+
+
 def test_unexpected_error_is_sanitized(monkeypatch, caplog):
     from backend.app.database import get_db
     def fail():

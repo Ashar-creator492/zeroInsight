@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { api } from './api'
 import { AskPage, InsightsPage, InvestigationsPage, SettingsPage } from './FeaturePages'
 
-vi.mock('./api', () => ({ api: { products: vi.fn(), progress: vi.fn(), complaintBreakdown: vi.fn(), searchReviews: vi.fn(), ask: vi.fn(), investigation: vi.fn(), startInvestigation: vi.fn(), decideInvestigation: vi.fn() } }))
+vi.mock('./api', () => ({ api: { products: vi.fn(), progress: vi.fn(), complaintBreakdown: vi.fn(), searchReviews: vi.fn(), ask: vi.fn(), investigation: vi.fn(), startInvestigation: vi.fn(), decideInvestigation: vi.fn(), verifyAdmin: vi.fn() } }))
 vi.mock('recharts', () => {
   const Box = ({ children }: { children?: ReactNode }) => <div>{children}</div>
   return { Area: Box, AreaChart: Box, Bar: Box, BarChart: Box, CartesianGrid: Box, Cell: Box, Pie: Box, PieChart: Box, ResponsiveContainer: Box, Tooltip: Box, XAxis: Box, YAxis: Box }
@@ -56,7 +56,19 @@ describe('future AI interfaces', () => {
     expect(await screen.findByText('A customer reported short battery life.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Review 21' }).getAttribute('href')).toBe('#investigation-review-21')
     expect((screen.getByRole('button', { name: 'Request revision' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText(/Decisions are unavailable until authorization/)).toBeTruthy()
+    vi.mocked(api.verifyAdmin).mockRejectedValueOnce(new Error('Invalid administrator token.')).mockResolvedValueOnce(undefined)
+    fireEvent.change(screen.getByLabelText('Administrator token'), { target: { value: 'wrong' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Verify administrator token' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Request revision' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Administrator token'), { target: { value: 'test-admin-token' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Verify administrator token' }))
+    expect(await screen.findByText(/Authorized for this page session/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Decision notes'), { target: { value: 'More evidence' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Request revision' }))
+    expect(await screen.findByText(/Human follow-up is required/)).toBeTruthy()
+    expect(api.decideInvestigation).toHaveBeenCalledWith('123', 'request_revision', 'More evidence', 'test-admin-token')
+    expect(JSON.stringify(localStorage)).not.toContain('test-admin-token')
     view.unmount()
     show(<InvestigationsPage />)
     expect(await screen.findByText('A customer reported short battery life.')).toBeTruthy()

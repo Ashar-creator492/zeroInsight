@@ -72,13 +72,18 @@ def start_investigation(request: InvestigationRequest):
         raise HTTPException(status_code=provider_status(exc), detail=f"Investigation could not be completed. Check thread {thread_id}.") from None
 
 
+@router.get("/authorization", dependencies=[Depends(limit_ai_requests), Depends(require_decision_authorization)])
+def check_authorization():
+    return {"authorized": True}
+
+
 @router.get("/{investigation_id}")
 def get_investigation(investigation_id: UUID):
     with graph_context() as graph:
         return snapshot(graph, str(investigation_id))
 
 
-@router.post("/{investigation_id}/decision", dependencies=[Depends(require_decision_authorization)])
+@router.post("/{investigation_id}/decision", dependencies=[Depends(limit_ai_requests), Depends(require_decision_authorization)])
 def decide_investigation(investigation_id: UUID, decision: DecisionRequest):
     thread_id = str(investigation_id)
     with graph_context() as graph:

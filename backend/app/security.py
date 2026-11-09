@@ -1,10 +1,12 @@
 """Small single-process safeguards; public deployments need a shared gateway."""
 from collections import deque
+from secrets import compare_digest
 from threading import Lock
 from time import monotonic
 
-from fastapi import HTTPException, Request
+from fastapi import Header, HTTPException, Request
 from groq import APITimeoutError, RateLimitError
+from backend.app.config import get_settings
 
 _hits: dict[str, deque[float]] = {}
 _lock = Lock()
@@ -25,9 +27,12 @@ def limit_ai_requests(request: Request) -> None:
         hits.append(now)
 
 
-def require_decision_authorization() -> None:
-    # Fail closed until an authentication and authorization design is approved.
-    raise HTTPException(status_code=403, detail='Investigation decisions are disabled pending authorization setup.')
+def require_decision_authorization(authorization: str | None = Header(default=None)) -> None:
+    configured = get_settings().admin_token
+    expected = configured.get_secret_value() if configured else ''
+    scheme, _, supplied = (authorization or '').partition(' ')
+    if not expected or scheme.lower() != 'bearer' or not supplied or not compare_digest(supplied.encode('utf-8'), expected.encode('utf-8')):
+        raise HTTPException(status_code=401, detail='Unauthorized.', headers={'WWW-Authenticate': 'Bearer'})
 
 
 def provider_status(exc: Exception) -> int:
