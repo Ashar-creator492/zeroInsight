@@ -236,3 +236,6 @@ frontend/*.tsbuildinfo
 .DS_Store
 *.sqlite
 *.db-journal
+!.env.docker.example
+*.backup
+*.dump
