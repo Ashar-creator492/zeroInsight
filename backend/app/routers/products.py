@@ -1,3 +1,4 @@
+# Expose product reviews, rating summaries, and review trends.
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
