@@ -1,3 +1,4 @@
+# Answer review questions using retrieved evidence and validated citations.
 import json
 import logging
 import re
@@ -77,6 +78,7 @@ def broad_kind(question: str) -> str | None:
     return "praised_features" if praise else "complaint_evidence"
 
 
+# Choose evidence from current completed classifications only when exact quotes match source text.
 def broad_review_evidence(db: Session, model: str, product_id: str, rating: int | None, kind: str) -> list[dict]:
     query = current_query(model, product_id).with_only_columns(Review, ReviewClassification).where(
         ReviewClassification.status == "completed")
@@ -113,6 +115,7 @@ def broad_review_evidence(db: Session, model: str, product_id: str, rating: int 
     return selected[:8]
 
 
+# Reject weak or invalid evidence before returning claims and review citations.
 @router.post("")
 def ask(request: ChatRequest, db: Session = Depends(get_db)):
     question = request.question.strip()
