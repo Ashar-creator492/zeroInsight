@@ -1,3 +1,4 @@
+# Configure the FastAPI application, lifecycle, routes, and sanitized errors.
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -18,6 +19,7 @@ from backend.app.routers.retrieval import router as retrieval_router
 from backend.app.routers.chat import router as chat_router
 from backend.app.routers.investigations import router as investigations_router
 
+# Initialize application resources during startup and release them during shutdown.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -35,11 +37,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="ZeroInsight AI", version="0.1.0", lifespan=lifespan)
 
 
+# Return validation errors without exposing submitted customer content.
 @app.exception_handler(RequestValidationError)
 async def validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse(status_code=422, content={"detail": "Invalid request parameters."})
 
 
+# Log a reference for unexpected errors while returning a sanitized response.
 @app.middleware("http")
 async def internal_error(request: Request, call_next):
     try:
