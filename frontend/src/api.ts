@@ -1,5 +1,11 @@
 export interface ChatSource { id: string; source_id: string; product_id: string; review_text: string; title: string | null; rating: number; review_date: string | null; source_url: string; similarity: number }
 export interface ChatAnswer { claims: { text: string; review_ids: string[]; evidence_quote: string }[]; sources: ChatSource[]; message: string | null }
+export interface Investigation {
+  id: string; status: string; request: string; product_id: string; stage: string
+  evidence?: (ChatSource & { retrieval_query: string })[]
+  report?: { findings: { kind: string; text: string; citations: { review_id: string; evidence_quote: string }[] }[]; limitations: string; evidence_status: string }
+  decision?: { decision: string; notes: string; decided_at: string }
+}
 export interface Product { id: string; name: string }
 export interface ReviewAnalysis {
   sentiment: string | null; complaint_categories: string[] | null
@@ -40,6 +46,9 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export const api = {
+  investigation: (id: string) => get<Investigation>(`/api/investigations/${encodeURIComponent(id)}`),
+  startInvestigation: (request: string, productId: string) => postInvestigation('/api/investigations', { request, product_id: productId }),
+  decideInvestigation: (id: string, decision: string, notes: string) => postInvestigation(`/api/investigations/${encodeURIComponent(id)}/decision`, { decision, notes }),
   ask: async (question: string, productId: string): Promise<ChatAnswer> => {
     const response = await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, product_id: productId }) })
     if (!response.ok) {
@@ -63,4 +72,13 @@ export const api = {
   features: (id: string, signal?: AbortSignal) => get<Distribution>(`/api/products/${encodeURIComponent(id)}/intelligence/praised-features`, signal),
   sentimentByRating: (id: string, signal?: AbortSignal) => get<RatingSentiment>(`/api/products/${encodeURIComponent(id)}/intelligence/sentiment-by-rating`, signal),
   complaintBreakdown: (id: string, signal?: AbortSignal) => get<ComplaintBreakdown>(`/api/products/${encodeURIComponent(id)}/intelligence/complaint-breakdown`, signal),
+}
+
+async function postInvestigation(path: string, body: object): Promise<Investigation> {
+  const response = await fetch(`${base}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(typeof error.detail === 'string' ? error.detail : `Request failed (${response.status})`)
+  }
+  return response.json() as Promise<Investigation>
 }

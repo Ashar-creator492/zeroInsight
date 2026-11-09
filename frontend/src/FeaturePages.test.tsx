@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { api } from './api'
 import { AskPage, InsightsPage, InvestigationsPage, SettingsPage } from './FeaturePages'
 
-vi.mock('./api', () => ({ api: { products: vi.fn(), progress: vi.fn(), complaintBreakdown: vi.fn(), searchReviews: vi.fn(), ask: vi.fn() } }))
+vi.mock('./api', () => ({ api: { products: vi.fn(), progress: vi.fn(), complaintBreakdown: vi.fn(), searchReviews: vi.fn(), ask: vi.fn(), investigation: vi.fn(), startInvestigation: vi.fn(), decideInvestigation: vi.fn() } }))
 vi.mock('recharts', () => {
   const Box = ({ children }: { children?: ReactNode }) => <div>{children}</div>
   return { Area: Box, AreaChart: Box, Bar: Box, BarChart: Box, CartesianGrid: Box, Cell: Box, Pie: Box, PieChart: Box, ResponsiveContainer: Box, Tooltip: Box, XAxis: Box, YAxis: Box }
@@ -18,7 +18,7 @@ beforeEach(() => {
   vi.mocked(api.complaintBreakdown).mockResolvedValue({ product_id: product, analyzed_reviews: 4, categories: [{ category: 'battery', count: 1, severity: { medium: 1 } }] })
   vi.mocked(api.searchReviews).mockResolvedValue({ items: [{ id: 'a', source_id: '21', product_id: product, review_text: 'Battery drains quickly', title: null, rating: 2, review_date: null, source_url: 'https://example.test', analysis_status: 'completed', classification: { sentiment: 'negative', complaint_categories: ['battery'], praised_features: [], general_praise: [], negative_experiences: ['Battery drains quickly'], issue_severity: 'medium', investigation_areas: [] } }], total: 1, page: 1, page_size: 3 })
 })
-afterEach(() => { cleanup(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear() })
 const show = (element: ReactNode) => render(<MemoryRouter>{element}</MemoryRouter>)
 describe('future AI interfaces', () => {
   it('shows only stored observation and linked review evidence', async () => {
@@ -43,6 +43,26 @@ describe('future AI interfaces', () => {
     show(<InvestigationsPage />)
     expect(await screen.findByText('No reports yet.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Approve' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+  it('starts an investigation, saves a revision decision and restores it', async () => {
+    const result = { id: '123', status: 'awaiting_review', stage: 'human_approval', request: 'battery', product_id: product, evidence: [{ id: 'a', source_id: '21', product_id: product, review_text: 'Battery drains quickly', title: null, rating: 2, review_date: null, source_url: 'https://example.test', similarity: 0.7, retrieval_query: 'complaint' }], report: { findings: [{ kind: 'reported_problem', text: 'A customer reported short battery life.', citations: [{ review_id: '21', evidence_quote: 'Battery drains quickly' }] }], limitations: 'Limited sample.', evidence_status: 'available' } }
+    vi.mocked(api.startInvestigation).mockResolvedValue(result)
+    vi.mocked(api.decideInvestigation).mockResolvedValue({ ...result, status: 'request_revision', stage: 'revision_requested', decision: { decision: 'request_revision', notes: 'More evidence', decided_at: '2026-01-01T00:00:00Z' } })
+    vi.mocked(api.investigation).mockResolvedValue(result)
+    const view = show(<InvestigationsPage />)
+    await screen.findByText('No reports yet.')
+    fireEvent.change(screen.getByLabelText('Product issue'), { target: { value: 'battery' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start investigation' }))
+    expect(await screen.findByText('A customer reported short battery life.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Review 21' }).getAttribute('href')).toBe('#investigation-review-21')
+    fireEvent.change(screen.getByLabelText('Decision notes'), { target: { value: 'More evidence' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Request revision' }))
+    expect(await screen.findByText(/Human follow-up is required/)).toBeTruthy()
+    expect(api.decideInvestigation).toHaveBeenCalledWith('123', 'request_revision', 'More evidence')
+    view.unmount()
+    show(<InvestigationsPage />)
+    expect(await screen.findByText('A customer reported short battery life.')).toBeTruthy()
+    expect(api.investigation).toHaveBeenCalledWith('123')
   })
   it('shows stored progress and disables batch processing', async () => {
     show(<SettingsPage />)

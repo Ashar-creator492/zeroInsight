@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, BookOpen, CircleCheck, FileSearch, GitBranch, LockKeyhole, MessageSquareText, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight, BookOpen, CircleCheck, FileSearch, GitBranch, MessageSquareText, ShieldCheck, Sparkles } from 'lucide-react'
 import { api } from './api'
-import type { ChatAnswer, ComplaintBreakdown, Progress, ReviewsPage } from './api'
+import type { ChatAnswer, ComplaintBreakdown, Investigation, Progress, ReviewsPage } from './api'
 import { AnalyticsShell, Coverage, ErrorBox, Skeleton, useProduct } from './AnalyticsPages'
 import './features.css'
 
@@ -80,10 +80,46 @@ export function AskPage() {
 const stages = [{ icon: MessageSquareText, title: 'Request', text: 'Define the question' }, { icon: FileSearch, title: 'Evidence', text: 'Gather customer reports' }, { icon: GitBranch, title: 'Analysis', text: 'Examine patterns' }, { icon: ShieldCheck, title: 'Human review', text: 'Decide what happens next' }]
 export function InvestigationsPage() {
   const state = useProduct()
-  return <AnalyticsShell state={state} eyebrow="Evidence to action" title="Investigation Center" subtitle="A future workflow for examining customer-reported issues.">
-    <div className="f-notice"><LockKeyhole size={16} /><span>Investigation workflows and human decisions are planned for Phase 5. No investigations have been run here.</span></div>
-    <section className="d-card f-card"><div className="f-heading"><div><p className="d-eyebrow">Planned workflow</p><h2>From question to decision</h2></div><span className="f-tag">Preview only</span></div><div className="f-stages">{stages.map(({ icon: Icon, title, text }, index) => <div className="f-stage" key={title}><div className="f-stage-number">0{index + 1}</div><span className="f-stage-icon"><Icon size={20} /></span><strong>{title}</strong><small>{text}</small></div>)}</div></section>
-    <div className="f-invest-grid"><section className="d-card f-card"><p className="d-eyebrow">Review evidence</p><h2>Evidence panel</h2><div className="f-placeholder"><FileSearch size={25} /><p>No investigation evidence yet.</p><small>Supporting reviews will appear after an investigation runs.</small></div></section><section className="d-card f-card"><p className="d-eyebrow">Investigation report</p><h2>Report &amp; findings</h2><div className="f-placeholder"><BookOpen size={25} /><p>No reports yet.</p><small>Findings and uncertainty will be shown with their sources.</small></div></section><section className="d-card f-card f-approval"><p className="d-eyebrow">Human decision</p><h2>Approval</h2><p>No recommendation is awaiting review.</p><div className="f-approval-actions"><button disabled>Approve</button><button disabled>Reject</button><button disabled>Request more evidence</button></div><small>Approval actions will be available in Phase 5.</small></section></div>
+  const [request, setRequest] = useState('')
+  const [notes, setNotes] = useState('')
+  const [investigation, setInvestigation] = useState<Investigation | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    const id = localStorage.getItem('zeroinsight-investigation-id')
+    if (!id) return
+    setBusy(true)
+    api.investigation(id).then(setInvestigation).catch(err => setError(err instanceof Error ? err.message : 'Unable to restore investigation.')).finally(() => setBusy(false))
+  }, [])
+  async function start() {
+    if (!request.trim() || !state.productId || busy) return
+    setBusy(true); setError('')
+    try {
+      const result = await api.startInvestigation(request.trim(), state.productId)
+      localStorage.setItem('zeroinsight-investigation-id', result.id)
+      setInvestigation(result)
+    } catch (err) { setError(err instanceof Error ? err.message : 'Unable to start investigation.') }
+    finally { setBusy(false) }
+  }
+  async function decide(decision: string) {
+    if (!investigation || busy) return
+    setBusy(true); setError('')
+    try { setInvestigation(await api.decideInvestigation(investigation.id, decision, notes)); setNotes('') }
+    catch (err) { setError(err instanceof Error ? err.message : 'Unable to save decision.') }
+    finally { setBusy(false) }
+  }
+  const awaiting = investigation?.status === 'awaiting_review'
+  return <AnalyticsShell state={state} eyebrow="Evidence to action" title="Investigation Center" subtitle="Examine customer-reported issues and review the evidence before deciding.">
+    <div className="f-notice"><ShieldCheck size={16} /><span>Customer experiences are reports, not verified product defects. Retrieved reviews are a limited sample.</span></div>
+    <section className="d-card f-card"><div className="f-heading"><div><p className="d-eyebrow">Investigation request</p><h2>From question to decision</h2></div><span className="f-tag">{investigation ? investigation.status.replaceAll('_', ' ') : 'Ready'}</span></div>
+      <form className="f-composer" onSubmit={event => { event.preventDefault(); void start() }}><label className="sr-only" htmlFor="investigation-request">Product issue</label><input id="investigation-request" value={request} onChange={event => setRequest(event.target.value)} placeholder="Describe a Luna customer-reported issue" maxLength={500} disabled={busy} /><button type="submit" disabled={busy || !request.trim() || !state.productId} aria-label="Start investigation"><ArrowRight size={18} /></button></form>
+      {busy && <p role="status">Investigation request in progress. Please wait…</p>}{error && <p className="f-chat-error" role="alert">{error}</p>}
+      {investigation && <p>Request: {investigation.request} · Current stage: {investigation.stage.replaceAll('_', ' ')}</p>}
+      <div className="f-stages">{stages.map(({ icon: Icon, title, text }, index) => <div className="f-stage" key={title}><div className="f-stage-number">0{index + 1}</div><span className="f-stage-icon"><Icon size={20} /></span><strong>{title}</strong><small>{text}</small></div>)}</div></section>
+    <div className="f-invest-grid"><section className="d-card f-card"><p className="d-eyebrow">Review evidence</p><h2>Evidence panel</h2>{investigation?.evidence?.length ? investigation.evidence.map(review => <article className="f-quote" id={`investigation-review-${encodeURIComponent(review.source_id)}`} key={review.id}><div><strong>Review {review.source_id}</strong><span>{review.rating} / 5</span></div>{review.title && <strong dir="auto">{review.title}</strong>}<p dir="auto">{review.review_text}</p><Link to={`/dashboard/reviews?product=${encodeURIComponent(review.product_id)}&search=${encodeURIComponent(review.source_id)}`}>Open review <ArrowRight size={13} /></Link> <a href={review.source_url} target="_blank" rel="noreferrer">Original source ↗</a></article>) : <div className="f-placeholder"><FileSearch size={25} /><p>No investigation evidence yet.</p></div>}</section>
+    <section className="d-card f-card"><p className="d-eyebrow">Investigation report</p><h2>Report &amp; findings</h2>{investigation?.report ? <><p>{investigation.report.limitations}</p>{investigation.report.findings.length ? investigation.report.findings.map((finding, index) => <article className="f-quote" key={index}><strong>{finding.kind.replaceAll('_', ' ')}</strong><p dir="auto">{finding.text}</p>{finding.citations.map((citation, i) => <blockquote dir="auto" key={i}>“{citation.evidence_quote}” <a href={`#investigation-review-${encodeURIComponent(citation.review_id)}`}>Review {citation.review_id}</a></blockquote>)}</article>) : <p>Insufficient evidence to make a supported finding.</p>}</> : <div className="f-placeholder"><BookOpen size={25} /><p>No reports yet.</p></div>}</section>
+    <section className="d-card f-card f-approval"><p className="d-eyebrow">Human decision</p><h2>Approval</h2><p>{awaiting ? 'Review the report and evidence before making a decision.' : investigation?.decision ? `Decision: ${investigation.decision.decision.replaceAll('_', ' ')} · ${new Date(investigation.decision.decided_at).toLocaleString()}` : 'No report is awaiting review.'}</p>{investigation?.decision?.notes && <p dir="auto">Notes: {investigation.decision.notes}</p>}{investigation?.decision?.decision === 'request_revision' && <p>Human follow-up is required. Automatic revision is not available.</p>}
+      <label htmlFor="investigation-notes">Decision notes</label><textarea id="investigation-notes" className="f-invest-notes" maxLength={2000} value={notes} onChange={event => setNotes(event.target.value)} disabled={!awaiting || busy} /><div className="f-approval-actions"><button disabled={!awaiting || busy} onClick={() => void decide('approve')}>Approve</button><button disabled={!awaiting || busy} onClick={() => void decide('reject')}>Reject</button><button disabled={!awaiting || busy} onClick={() => void decide('request_revision')}>Request revision</button></div><small>Decisions are recorded for human review; no external action is taken.</small></section></div>
   </AnalyticsShell>
 }
 
