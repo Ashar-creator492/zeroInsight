@@ -1,3 +1,4 @@
+# Run a checkpointed LangGraph investigation grounded in retrieved reviews.
 """Evidence-grounded investigation graph; model calls occur only during a requested run."""
 import json
 import re
@@ -66,6 +67,7 @@ def understand(state: InvestigationState) -> dict:
             "stage": "retrieve_evidence"}
 
 
+# Collect distinct relevant and contrasting reviews while filtering weak similarity matches.
 def retrieve(state: InvestigationState) -> dict:
     selected = []
     seen = set()
@@ -81,6 +83,7 @@ def retrieve(state: InvestigationState) -> dict:
     return {"evidence": selected, "stage": "analyze_evidence"}
 
 
+# Treat reviews as untrusted evidence and request findings with source and quote identifiers.
 def analyze(state: InvestigationState) -> dict:
     if not state["evidence"]:
         return {"analysis": {"findings": []}, "stage": "draft_report"}
@@ -98,6 +101,7 @@ def analyze(state: InvestigationState) -> dict:
     return {"analysis": result.model_dump(), "stage": "draft_report"}
 
 
+# Resolve quote identifiers against retrieved reviews and discard unsupported findings.
 def draft(state: InvestigationState) -> dict:
     sources = {row["source_id"]: row for row in state["evidence"]}
     findings = []
@@ -123,12 +127,14 @@ def draft(state: InvestigationState) -> dict:
             "stage": "human_approval"}
 
 
+# Pause the checkpointed workflow until a human records a decision.
 def human_approval(state: InvestigationState) -> dict:
     decision = interrupt({"message": "Review the evidence and report before making a decision."})
     return {"decision": {**decision, "decided_at": datetime.now(timezone.utc).isoformat()},
             "stage": "revision_requested" if decision["decision"] == "request_revision" else "complete"}
 
 
+# Connect the investigation stages to the supplied persistent checkpointer.
 def build_graph(checkpointer):
     workflow = StateGraph(InvestigationState)
     workflow.add_node("understand_investigation", understand)
