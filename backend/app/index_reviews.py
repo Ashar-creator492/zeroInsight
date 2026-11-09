@@ -1,3 +1,4 @@
+# Command-line entry point for indexing review embeddings.
 """Index Luna reviews locally; safe to interrupt and rerun."""
 from sqlalchemy.orm import Session
 from backend.app.database import make_engine
