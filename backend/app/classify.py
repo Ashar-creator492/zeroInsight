@@ -1,3 +1,4 @@
+# Command-line entry point for paced, resumable Luna review classification.
 """Run a capped Luna review pilot or a later approved full batch."""
 
 import argparse
@@ -43,6 +44,7 @@ def pilot_reviews(reviews: list[Review]) -> list[Review]:
     return chosen[:10]
 
 
+# Select a bounded review set, enforce the local worker lock, and persist each attempt.
 def main() -> None:
     parser = argparse.ArgumentParser(description="Classify Luna reviews with Groq")
     parser.add_argument("--all", action="store_true", help="Process all Luna reviews after explicit pilot approval")
