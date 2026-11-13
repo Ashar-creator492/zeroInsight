@@ -6,6 +6,7 @@ import {
   ShieldCheck, Sparkles, Watch, X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+const WatchDisplay = lazy(() => import('./WatchDisplay'))
 const Dashboard = lazy(() => import('./Dashboard'))
 const ReviewExplorer = lazy(() => import('./AnalyticsPages').then(module => ({ default: module.ReviewExplorer })))
 const SentimentPage = lazy(() => import('./AnalyticsPages').then(module => ({ default: module.SentimentPage })))
@@ -79,7 +80,7 @@ function LandingPage() {
       <Header />
       <main>
         <section className="hero" id="overview" aria-labelledby="hero-title">
-          <div className="hero-art" aria-hidden="true" />
+          <div className="hero-art"><div className="hero-scene"><Suspense fallback={null}><WatchDisplay /></Suspense></div></div>
           <div className="hero-content page-width">
             <div className="hero-copy">
               <p className="eyebrow hero-eyebrow">Reviews <span>/</span> Insights <span>/</span> Investigations <span>/</span> Actions</p>

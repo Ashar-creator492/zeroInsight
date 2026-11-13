@@ -183,3 +183,16 @@ h2 { margin-bottom: 0; font-size: clamp(51px, 6.3vw, 89px); line-height: .93; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+.hero-art { background: #130b0c; overflow: hidden; }
+.hero-scene { position: absolute; width: max(100%, 180.3vh); aspect-ratio: 1684 / 934; left: 50%; top: 50%; transform: translate(-50%, -50%); background: url('/silver-showcase.webp') center / 100% 100% no-repeat; }
+.watch-display { position: absolute; left: 62.4%; top: 28%; width: 11.3%; height: 38%; pointer-events: none; }
+.watch-display canvas { display: block; width: 100%; height: 100%; }
+.hero-copy { color: #f4eae6; }
+.hero-copy .demo-unavailable { color: #e9dcd8; }
+.site-header { color: #fff; }
+@media (max-width: 767px) {
+  .hero-art { background: #130b0c; }
+  .hero-art::after { display: none; }
+  .hero-scene { width: max(130%, 94vh); top: auto; bottom: 0; left: 67%; transform: translateX(-50%); }
+}
