@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 
 from backend.app.config import get_settings
 from backend.app.database import get_db
-from backend.app.models import ReviewClassification
+from backend.app.models import Review, ReviewClassification
 from backend.app.routers.products import require_product
 from backend.app.services.intelligence import complaint_breakdown, current_query, distribution, progress, sentiment_by_rating
+from backend.app.services.classification import CLASSIFICATION_VERSION, EXPERIMENTAL_CLASSIFICATION_VERSION
 
 router = APIRouter(prefix="/api/products/{product_id}/intelligence", tags=["intelligence"])
 
@@ -20,6 +21,31 @@ def check_luna(db: Session, product_id: str):
 def analysis_progress(product_id: str, db: Session = Depends(get_db)):
     check_luna(db, product_id)
     return progress(db, get_settings().groq_model, product_id)
+
+
+@router.get("/versions")
+def classification_versions(product_id: str, db: Session = Depends(get_db)):
+    check_luna(db, product_id)
+    model = get_settings().groq_model
+    total = db.scalar(select(func.count()).select_from(Review).where(Review.product_id == product_id)) or 0
+    rows = db.execute(select(ReviewClassification, Review).join(Review, Review.id == ReviewClassification.review_id).where(
+        Review.product_id == product_id, ReviewClassification.model_name == model,
+        ReviewClassification.content_fingerprint == Review.content_fingerprint,
+        ReviewClassification.version.in_([CLASSIFICATION_VERSION, EXPERIMENTAL_CLASSIFICATION_VERSION]))).all()
+    versions = []
+    for version in (CLASSIFICATION_VERSION, EXPERIMENTAL_CLASSIFICATION_VERSION):
+        selected = [(c, r) for c, r in rows if c.version == version]
+        completed = sum(c.status == "completed" for c, _ in selected)
+        failed = sum(c.status == "failed" for c, _ in selected)
+        flagged = [(c, r) for c, r in selected if c.status == "failed" or c.unavailable_evidence]
+        versions.append({"version": version, "active": version == CLASSIFICATION_VERSION, "total": total,
+            "completed": completed, "failed": failed, "pending": total - completed - failed,
+            "requires_review": len(flagged),
+            "last_attempted_at": max((c.attempted_at for c, _ in selected), default=None),
+            "review_items": [{"source_id": r.source_id, "review_text": r.review_text, "title": r.title,
+                "status": c.status, "error_type": c.error_type, "validation_error": c.validation_error,
+                "unavailable_evidence": c.unavailable_evidence} for c, r in flagged]})
+    return {"versions": versions}
 
 
 @router.get("/sentiment")

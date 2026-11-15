@@ -32,6 +32,7 @@ export interface Progress {
   product_id: string; model_name: string; version: string; total_reviews: number
   analyzed: number; failed: number; pending: number; cooldown_until: string | null
 }
+export interface ClassificationVersion { version: string; active: boolean; total: number; completed: number; failed: number; pending: number; requires_review: number; last_attempted_at: string | null; review_items: { source_id: string; review_text: string; title: string | null; status: string; error_type: string | null; validation_error: string | null }[] }
 export interface Distribution { product_id: string; analyzed_reviews: number; counts: Record<string, number> }
 export interface RatingSentiment { product_id: string; analyzed_reviews: number; ratings: ({ rating: number } & Record<string, number>)[] }
 export interface ComplaintBreakdown { product_id: string; analyzed_reviews: number; categories: { category: string; count: number; severity: Record<string, number> }[] }
@@ -70,6 +71,7 @@ export const api = {
     return get<ReviewsPage>(`/api/products/${encodeURIComponent(id)}/reviews?${query}`, signal)
   },
   trend: (id: string, signal?: AbortSignal) => get<Trend>(`/api/products/${encodeURIComponent(id)}/review-trend`, signal),
+  versions: (id: string, signal?: AbortSignal) => get<{ versions: ClassificationVersion[] }>(`/api/products/${encodeURIComponent(id)}/intelligence/versions`, signal),
   progress: (id: string, signal?: AbortSignal) => get<Progress>(`/api/products/${encodeURIComponent(id)}/intelligence/progress`, signal),
   sentiment: (id: string, signal?: AbortSignal) => get<Distribution>(`/api/products/${encodeURIComponent(id)}/intelligence/sentiment`, signal),
   complaints: (id: string, signal?: AbortSignal) => get<Distribution>(`/api/products/${encodeURIComponent(id)}/intelligence/complaints`, signal),

@@ -514,3 +514,125 @@ def test_supported_and_unavailable_evidence_can_coexist(engine):
         assert record.complaint_categories == ['battery']
         assert record.complaint_evidence == [RESULT['complaints'][0]]
         assert record.unavailable_evidence == [{'kind': 'complaint', 'category': 'connectivity', 'evidence_status': 'unavailable'}]
+
+
+def test_version9_preserves_version8_and_records_separate_results(engine):
+    with Session(engine) as db:
+        review = db.get(Review, "a" * 64)
+        assert process_reviews(db, FakeChain(RESULT), "test-model", [review])["analyzed"] == 1
+        assert process_reviews(db, FakeChain(RESULT), "test-model", [review], version="9")["analyzed"] == 1
+        rows = db.scalars(select(ReviewClassification).where(ReviewClassification.review_id == review.id)).all()
+        assert {row.version for row in rows} == {"8", "9"}
+        assert all(row.sentiment == "negative" for row in rows)
+        assert process_reviews(db, FakeChain(RESULT), "test-model", [review], version="9")["cached"] == 1
+
+
+def test_pilot_stops_after_one_attempt_on_unexpected_failure(engine):
+    with Session(engine) as db:
+        reviews = db.scalars(select(Review).order_by(Review.id)).all()
+        chain = FakeChain(RuntimeError("provider failure"))
+        counts = process_reviews(db, chain, "test-model", reviews, version="9", retries=1, stop_on_error=True)
+        assert counts["failed"] == 1 and chain.calls == 1
+        rows = db.scalars(select(ReviewClassification)).all()
+        assert len(rows) == 1 and rows[0].status == "failed" and rows[0].attempt_count == 1
+
+
+def test_pilot_saves_rejected_response_privately_and_continues(engine, tmp_path):
+    with Session(engine) as db:
+        reviews = db.scalars(select(Review).order_by(Review.id)).all()
+        invalid = {"sentiment": "positive", "complaints": [], "praised_features": [
+            {"category": "build quality", "evidence_quote": "Battery dies by noon"}]}
+        valid = {"sentiment": "positive", "complaints": [], "praised_features": [
+            {"category": "display", "evidence_quote": "Great display"}]}
+        chain = FakeChain([invalid, valid])
+        counts = process_reviews(db, chain, "test-model", reviews, version="9", retries=1, failure_dir=tmp_path)
+        assert counts["failed"] == 1 and counts["analyzed"] == 1 and chain.calls == 2
+        saved = list(tmp_path.glob("*.json"))
+        assert len(saved) == 1 and saved[0].stat().st_mode & 0o777 == 0o600
+        assert 'Battery dies by noon' in saved[0].read_text()
+
+
+def test_version_summary_api_separates_versions_and_ignores_stale_records(engine, monkeypatch):
+    from backend.app.routers import intelligence
+
+    monkeypatch.setattr(intelligence, "get_settings", lambda: SimpleNamespace(groq_model="test-model"))
+    with Session(engine) as db:
+        db.add_all([
+            ReviewClassification(review_id="a" * 64, model_name="test-model", version="8",
+                                 content_fingerprint="f" * 64, status="completed", sentiment="negative"),
+            ReviewClassification(review_id="b" * 64, model_name="test-model", version="8",
+                                 content_fingerprint="g" * 64, status="failed", error_type="ValidationError"),
+            ReviewClassification(review_id="a" * 64, model_name="test-model", version="9",
+                                 content_fingerprint="f" * 64, status="completed", sentiment="negative",
+                                 unavailable_evidence=[{"kind": "complaint", "category": "battery"}]),
+            ReviewClassification(review_id="b" * 64, model_name="test-model", version="9",
+                                 content_fingerprint="stale", status="completed", sentiment="positive"),
+        ])
+        db.commit()
+
+    def test_db():
+        with Session(engine) as db:
+            yield db
+
+    app.dependency_overrides[get_db] = test_db
+    try:
+        client = TestClient(app)
+        response = client.get("/api/products/luna-smartwatch/intelligence/versions")
+        assert response.status_code == 200
+        v8, v9 = response.json()["versions"]
+        assert (v8["version"], v8["active"], v8["completed"], v8["failed"], v8["pending"]) == ("8", True, 1, 1, 0)
+        assert (v9["version"], v9["active"], v9["completed"], v9["failed"], v9["pending"]) == ("9", False, 1, 0, 1)
+        assert v8["review_items"][0]["source_id"] == "2"
+        assert v9["requires_review"] == 1 and v9["review_items"][0]["source_id"] == "1"
+        assert client.get("/api/products/unknown/intelligence/versions").status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_version9_rejects_context_free_and_truncated_evidence(engine):
+    with Session(engine) as db:
+        review = db.get(Review, "b" * 64)
+        review.review_text = "Battery life is excellent. Battery drained in..."
+        output = {"sentiment": "mixed", "complaints": [{"category": "battery", "evidence_quote": "Battery drained in..."}],
+                  "praised_features": [{"category": "battery", "evidence_quote": "Battery life"}]}
+        tracker = {}
+        result, _ = classify_review(FakeChain(output), review, retries=1, usage_tracker=tracker, version="9")
+        assert not result.complaints and not result.praised_features
+        assert len(tracker["unavailable_evidence"]) == 2
+        output["praised_features"][0]["evidence_quote"] = "Battery life is excellent"
+        assert classify_review(FakeChain(output), review, retries=1, version="9")[0].praised_features
+
+
+def test_version9_uses_new_prompt_without_changing_version8(engine):
+    from backend.app.services.classification import PROMPT, PROMPT_V9
+    class CapturingChain(FakeChain):
+        def invoke(self, messages):
+            self.prompt = messages[0][1]
+            return super().invoke(messages)
+    with Session(engine) as db:
+        review = db.get(Review, "a" * 64)
+        chain = CapturingChain(RESULT)
+        classify_review(chain, review, version="9")
+        assert chain.prompt == PROMPT_V9
+        classify_review(chain, review)
+        assert chain.prompt == PROMPT
+
+
+def test_offline_audit_reports_missing_categories_and_exact_evidence():
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location("audit_evaluator", Path(__file__).parent / "evaluation" / "evaluate.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    review = SimpleNamespace(title="Lovely screen", review_text="Battery dies early")
+    row = SimpleNamespace(status="completed", sentiment="negative", complaint_evidence=[
+        {"category": "battery", "evidence_quote": "Battery dies early"}], praised_features=[
+        {"category": "display", "evidence_quote": "Lovely screen"}], unavailable_evidence=[])
+    label = {"sentiment": "mixed", "required_complaints": ["battery", "charging"],
+             "forbidden_features": ["display"]}
+    assert module.evaluate_case(label, review, row) == ["sentiment mismatch", "missing complaints: charging", "unsupported features: display"]
+    row.praised_features[0]["evidence_quote"] = "invented screen"
+    assert "invalid exact evidence: display" in module.evaluate_case(label, review, row)
+    row.sentiment = "invalid"
+    assert module.evaluate_case(label, review, row) == ["invalid classification schema"]
+    assert module.evaluate_case(label, review, None) == ["classification unavailable"]

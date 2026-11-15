@@ -1,0 +1,13 @@
+# Luna audit evaluation
+
+`luna_v9.json` contains partial, manually reviewed expectations keyed by source ID; it contains no customer text. Load the complete title and body from the private review database and compare each resulting classification with the specified fields. An omitted field is unlabelled; it must not be scored as an empty list. Also inspect each exact quote against its full source and assess whether it actually supports the interpretation. The labels are conservative, and ambiguous cases need human review.
+
+All cases informed the Version 9 instructions, so this is a regression set, not a held-out accuracy estimate. The JSON-generation cases test classification content only when the provider returns valid structured output. Existing mocked tests exercise retry and schema handling. Never submit the private source texts to Git.
+
+Run `python tests/evaluation/evaluate.py --version 8` (or `9`) from the project root with `PYTHONPATH=.`, `DATABASE_URL`, and `GROQ_MODEL` configured for the target PostgreSQL database. The script uses a read-only transaction, does not call Groq, and prints IDs and discrepancies rather than customer text. Exact substring checks and partial labels cannot establish semantic correctness; review the original full titles and bodies manually. In particular, a matching quote may lack evaluative context. The additional cases 16, 376, 247, 455, 156 and 178 were labeled after prompt design; they form a small supplementary check, not a representative held-out benchmark.
+
+## Initial Version 9 pilot
+
+A ten-request pilot on source IDs 115, 12, 407, 41, 350, 44, 509, 78, 14 and 63 produced four completed and six failed results. IDs 41 and 44 produced plausible evidence-backed classifications where Version 8 failed; 14 corrected a fading complaint from appearance to build quality; 63 matched its existing Version 8 result but both missed comfort praise in the title. IDs 115, 12, 407 and 78 failed feature grounding; 350 and 509 failed provider JSON generation. Exact quote matching does not prove semantic accuracy, and this hand-picked sample cannot establish population accuracy. Version 9 remains experimental and Version 8 remains active.
+
+The stored token counters total 6,216 input and 3,057 output tokens for responses where usage was available; provider errors did not expose usage. Rejected responses are private customer-derived data: when configured with `--failure-dir`, they are stored as owner-readable files outside Git, under `data/raw/` for local use. A failure does not establish a negative classification. Earlier responses that were not saved cannot be recovered.

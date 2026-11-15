@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { api } from './api'
 import { AskPage, InsightsPage, InvestigationsPage, SettingsPage } from './FeaturePages'
 
-vi.mock('./api', () => ({ api: { products: vi.fn(), progress: vi.fn(), complaintBreakdown: vi.fn(), searchReviews: vi.fn(), ask: vi.fn(), investigation: vi.fn(), startInvestigation: vi.fn(), decideInvestigation: vi.fn(), verifyAdmin: vi.fn() } }))
+vi.mock('./api', () => ({ api: { products: vi.fn(), progress: vi.fn(), versions: vi.fn(), complaintBreakdown: vi.fn(), searchReviews: vi.fn(), ask: vi.fn(), investigation: vi.fn(), startInvestigation: vi.fn(), decideInvestigation: vi.fn(), verifyAdmin: vi.fn() } }))
 vi.mock('recharts', () => {
   const Box = ({ children }: { children?: ReactNode }) => <div>{children}</div>
   return { Area: Box, AreaChart: Box, Bar: Box, BarChart: Box, CartesianGrid: Box, Cell: Box, Pie: Box, PieChart: Box, ResponsiveContainer: Box, Tooltip: Box, XAxis: Box, YAxis: Box }
@@ -14,6 +14,7 @@ vi.mock('recharts', () => {
 const product = 'luna-smartwatch'
 beforeEach(() => {
   vi.mocked(api.products).mockResolvedValue([{ id: product, name: 'Luna Smartwatch' }])
+  vi.mocked(api.versions).mockResolvedValue({ versions: [] })
   vi.mocked(api.progress).mockResolvedValue({ product_id: product, model_name: 'test-model', version: '7', total_reviews: 510, analyzed: 4, failed: 1, pending: 505, cooldown_until: null })
   vi.mocked(api.complaintBreakdown).mockResolvedValue({ product_id: product, analyzed_reviews: 4, categories: [{ category: 'battery', count: 1, severity: { medium: 1 } }] })
   vi.mocked(api.searchReviews).mockResolvedValue({ items: [{ id: 'a', source_id: '21', product_id: product, review_text: 'Battery drains quickly', title: null, rating: 2, review_date: null, source_url: 'https://example.test', analysis_status: 'completed', classification: { sentiment: 'negative', complaint_categories: ['battery'], praised_features: [], general_praise: [], negative_experiences: ['Battery drains quickly'], issue_severity: 'medium', investigation_areas: [] } }], total: 1, page: 1, page_size: 3 })

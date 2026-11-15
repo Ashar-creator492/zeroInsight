@@ -49,14 +49,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Classify Luna reviews with Groq")
     parser.add_argument("--all", action="store_true", help="Process all Luna reviews after explicit pilot approval")
     parser.add_argument("--stop-on-rate-limit", action="store_true", help="Stop immediately on any rate limit")
+    parser.add_argument("--stop-on-error", action="store_true", help="Stop on the first failed review")
+    parser.add_argument("--attempts", type=int, default=3, help="Maximum API attempts per review")
+    parser.add_argument("--failure-dir", type=Path, help="Private directory for rejected model responses")
     parser.add_argument("--limit", type=int, default=25, help="Maximum reviews in an approved full-batch run")
     parser.add_argument("--source-ids", nargs="+", help="Classify only these real Luna source IDs for validation")
+    parser.add_argument("--version", choices=["8", "9"], default=CLASSIFICATION_VERSION, help="Classification version (dashboard remains on version 8)")
     args = parser.parse_args()
     settings = get_settings()
     if not settings.groq_api_key:
         parser.error("GROQ_API_KEY is missing. Add it to your private .env file; never paste it into chat.")
     if args.limit < 1:
         parser.error("--limit must be positive")
+    if args.attempts < 1:
+        parser.error("--attempts must be positive")
     if args.all and args.source_ids:
         parser.error("--all and --source-ids cannot be combined")
     if args.source_ids and len(args.source_ids) > 30:
@@ -72,7 +78,7 @@ def main() -> None:
         elif args.all:
             existing = {row.review_id: row for row in db.scalars(select(ReviewClassification).where(
                 ReviewClassification.model_name == settings.groq_model,
-                ReviewClassification.version == CLASSIFICATION_VERSION,
+                ReviewClassification.version == args.version,
             )).all()}
             selected = [review for review in reviews if review.id not in existing or
                         existing[review.id].status != "completed" or
@@ -82,14 +88,15 @@ def main() -> None:
         chain = make_chain(settings.groq_api_key, settings.groq_model)
         counts = process_reviews(db, chain, settings.groq_model, selected,
                                  daily_token_cap=160_000,
-                                 pacer=RequestPacer(), stop_on_rate_limit=args.stop_on_rate_limit)
+                                 pacer=RequestPacer(), stop_on_rate_limit=args.stop_on_rate_limit, version=args.version,
+                                 retries=args.attempts, stop_on_error=args.stop_on_error, failure_dir=args.failure_dir)
         print(json.dumps(counts), flush=True)
         if not args.all:
             for review in selected:
                 row = db.scalar(select(ReviewClassification).where(
                     ReviewClassification.review_id == review.id,
                     ReviewClassification.model_name == settings.groq_model,
-                    ReviewClassification.version == CLASSIFICATION_VERSION,
+                    ReviewClassification.version == args.version,
                 ))
                 print(json.dumps({"source_id": review.source_id, "rating": review.rating,
                                   "review_text": review.review_text, "status": row.status if row else "pending",

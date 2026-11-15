@@ -1,0 +1,197 @@
+{
+  "description": "Partial human-reviewed labels; fetch full titles and bodies from the private review database at evaluation time. Omitted fields are unlabelled, not empty. These cases informed the Version 9 prompt and are not a held-out accuracy set.",
+  "cases": [
+    {
+      "source_id": "115",
+      "forbidden_features": [
+        "build quality"
+      ],
+      "required_features": [
+        "battery",
+        "delivery"
+      ]
+    },
+    {
+      "source_id": "12",
+      "forbidden_features": [
+        "build quality"
+      ],
+      "required_features": [
+        "design"
+      ]
+    },
+    {
+      "source_id": "407",
+      "forbidden_features": [
+        "software/app"
+      ],
+      "required_features": [
+        "comfort"
+      ]
+    },
+    {
+      "source_id": "41",
+      "forbidden_features": [
+        "software/app"
+      ],
+      "required_complaints": [
+        "battery"
+      ],
+      "sentiment": "mixed"
+    },
+    {
+      "source_id": "350",
+      "required_features": [
+        "design"
+      ]
+    },
+    {
+      "source_id": "44",
+      "forbidden_features": [
+        "build quality"
+      ],
+      "required_features": [
+        "design",
+        "comfort"
+      ]
+    },
+    {
+      "source_id": "509",
+      "required_features": [
+        "price/value"
+      ]
+    },
+    {
+      "source_id": "78",
+      "forbidden_features": [
+        "customer support"
+      ],
+      "required_features": [
+        "delivery"
+      ]
+    },
+    {
+      "source_id": "14",
+      "required_complaints": [
+        "build quality"
+      ],
+      "sentiment": "mixed"
+    },
+    {
+      "source_id": "369",
+      "forbidden_complaints": [
+        "battery"
+      ],
+      "required_features": [
+        "battery",
+        "comfort"
+      ]
+    },
+    {
+      "source_id": "311",
+      "forbidden_features": [
+        "battery"
+      ],
+      "required_features": [
+        "design",
+        "display",
+        "calling"
+      ]
+    },
+    {
+      "source_id": "256",
+      "forbidden_features": [
+        "design"
+      ],
+      "required_features": [
+        "comfort"
+      ]
+    },
+    {
+      "source_id": "63",
+      "required_features": [
+        "comfort"
+      ],
+      "required_complaints": [
+        "battery"
+      ],
+      "sentiment": "mixed"
+    },
+    {
+      "source_id": "97",
+      "required_features": [
+        "price/value"
+      ]
+    },
+    {
+      "source_id": "98",
+      "required_features": [
+        "battery"
+      ],
+      "feature_quote_contains": {
+        "battery": "best"
+      }
+    },
+    {
+      "source_id": "150",
+      "required_features": [
+        "battery",
+        "display"
+      ],
+      "feature_quote_contains": {
+        "battery": "good",
+        "display": "good"
+      }
+    },
+    {
+      "source_id": "51",
+      "forbidden_features": [
+        "software/app"
+      ]
+    },
+    {
+      "source_id": "16",
+      "sentiment": "mixed",
+      "required_complaints": [
+        "delivery"
+      ]
+    },
+    {
+      "source_id": "376",
+      "sentiment": "mixed",
+      "required_complaints": [
+        "delivery"
+      ],
+      "required_features": [
+        "price/value"
+      ]
+    },
+    {
+      "source_id": "247",
+      "sentiment": "negative",
+      "required_complaints": [
+        "battery"
+      ]
+    },
+    {
+      "source_id": "455",
+      "sentiment": "negative",
+      "required_complaints": [
+        "customer support"
+      ]
+    },
+    {
+      "source_id": "156",
+      "sentiment": "neutral",
+      "forbid_all_complaints": true,
+      "forbid_all_features": true
+    },
+    {
+      "source_id": "178",
+      "sentiment": "positive",
+      "forbidden_features": [
+        "build quality"
+      ]
+    }
+  ]
+}
