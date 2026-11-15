@@ -37,6 +37,13 @@ def test_workflow_interrupt_and_resume_after_recompile(monkeypatch):
     assert result.values['decision']['decided_at']
 
 
+def test_intake_preserves_scope_and_selected_review():
+    state = {'request': 'Investigate battery', 'product_id': 'luna-smartwatch', 'category': 'battery', 'source_review': EVIDENCE[0]}
+    scope = agent.understand(state)['scope']
+    assert scope['category'] == 'battery' and scope['product_id'] == 'luna-smartwatch'
+    assert state['source_review']['source_id'] == '7'
+
+
 def test_invalid_quotes_and_single_review_patterns_fail_closed():
     base = {'evidence': EVIDENCE, 'analysis': {'findings': []}}
     assert agent.draft(base)['report']['evidence_status'] == 'insufficient evidence'
@@ -68,7 +75,10 @@ def test_endpoints_pause_and_record_revision(monkeypatch):
     response = client.post('/api/investigations', json={'request': 'Investigate battery complaints'})
     assert response.status_code == 201 and response.json()['status'] == 'awaiting_review'
     ident = response.json()['id']
+    history = client.get('/api/investigations').json()['items']
+    assert len(history) == 1 and history[0]['id'] == ident and history[0]['status'] == 'awaiting_review'
     assert client.get(f'/api/investigations/{ident}').json()['report']['findings'] == [FINDING]
+    assert client.post(f'/api/investigations/{ident}/resume').status_code == 409
     monkeypatch.setattr(security, 'get_settings', lambda: SimpleNamespace(admin_token=SecretStr('test-admin-token')))
     assert client.post(f'/api/investigations/{ident}/decision', json={'decision': 'approve'}).status_code == 401
     assert client.post(f'/api/investigations/{ident}/decision', headers={'Authorization': 'Bearer wrong'}, json={'decision': 'approve'}).status_code == 401

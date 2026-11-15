@@ -50,6 +50,6 @@ describe('analytics pages', () => {
     render(<MemoryRouter initialEntries={['/dashboard/complaints']}><ComplaintPage /></MemoryRouter>)
     expect(await screen.findByText('Reported experience')).toBeTruthy()
     expect(screen.getByRole('link', { name: /Open in Review Explorer/ }).getAttribute('href')).toContain('complaint=battery')
-    expect((screen.getByRole('button', { name: /Investigate issue/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('link', { name: /Investigate issue/ }).getAttribute('href')).toContain('category=battery')
   })
 })

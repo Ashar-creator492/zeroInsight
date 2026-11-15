@@ -5,6 +5,7 @@ export interface Investigation {
   evidence?: (ChatSource & { retrieval_query: string })[]
   report?: { findings: { kind: string; text: string; citations: { review_id: string; evidence_quote: string }[] }[]; limitations: string; evidence_status: string }
   decision?: { decision: string; notes: string; decided_at: string }
+  analytics?: { version: string; analyzed: number; category: string | null; category_count: number | null }
 }
 export interface Product { id: string; name: string }
 export interface ReviewAnalysis {
@@ -48,7 +49,9 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 
 export const api = {
   investigation: (id: string) => get<Investigation>(`/api/investigations/${encodeURIComponent(id)}`),
-  startInvestigation: (request: string, productId: string) => postInvestigation('/api/investigations', { request, product_id: productId }),
+  investigationHistory: () => get<{ items: Investigation[] }>('/api/investigations'),
+  resumeInvestigation: (id: string) => postInvestigation(`/api/investigations/${encodeURIComponent(id)}/resume`, {}),
+  startInvestigation: (request: string, productId: string, sourceId?: string, category?: string) => postInvestigation('/api/investigations', { request, product_id: productId, source_id: sourceId || null, category: category || null }),
   verifyAdmin: async (token: string) => {
     const response = await fetch(`${base}/api/investigations/authorization`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
     if (!response.ok) throw new Error(response.status === 401 ? 'Invalid administrator token.' : 'Unable to verify authorization. Please try again.')
