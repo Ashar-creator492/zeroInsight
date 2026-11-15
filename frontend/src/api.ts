@@ -34,6 +34,8 @@ export interface Progress {
   analyzed: number; failed: number; pending: number; cooldown_until: string | null
 }
 export interface ClassificationVersion { version: string; active: boolean; total: number; completed: number; failed: number; pending: number; requires_review: number; last_attempted_at: string | null; review_items: { source_id: string; review_text: string; title: string | null; status: string; error_type: string | null; validation_error: string | null }[] }
+export interface BriefItem { category: string; count: number; percentage: number; evidence: { review_id: string; quote: string; source_url: string }[] }
+export interface ImprovementBrief { product_id: string; generated_at: string; version: string; total_reviews: number; analyzed_reviews: number; excluded_reviews: number; complaints: BriefItem[]; praised_features: BriefItem[]; recommendations: (BriefItem & { priority: string; action: string; rationale: string; uncertainty: string })[]; methodology: string; limitations: string }
 export interface Distribution { product_id: string; analyzed_reviews: number; counts: Record<string, number> }
 export interface RatingSentiment { product_id: string; analyzed_reviews: number; ratings: ({ rating: number } & Record<string, number>)[] }
 export interface ComplaintBreakdown { product_id: string; analyzed_reviews: number; categories: { category: string; count: number; severity: Record<string, number> }[] }
@@ -50,6 +52,7 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 export const api = {
   investigation: (id: string) => get<Investigation>(`/api/investigations/${encodeURIComponent(id)}`),
   investigationHistory: () => get<{ items: Investigation[] }>('/api/investigations'),
+  improvementBrief: (id: string, signal?: AbortSignal) => get<ImprovementBrief>(`/api/products/${encodeURIComponent(id)}/improvement-brief`, signal),
   resumeInvestigation: (id: string) => postInvestigation(`/api/investigations/${encodeURIComponent(id)}/resume`, {}),
   startInvestigation: (request: string, productId: string, sourceId?: string, category?: string) => postInvestigation('/api/investigations', { request, product_id: productId, source_id: sourceId || null, category: category || null }),
   verifyAdmin: async (token: string) => {

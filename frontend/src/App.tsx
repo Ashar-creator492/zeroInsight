@@ -16,6 +16,7 @@ const InsightsPage = lazy(() => import('./FeaturePages').then(module => ({ defau
 const AskPage = lazy(() => import('./FeaturePages').then(module => ({ default: module.AskPage })))
 const InvestigationsPage = lazy(() => import('./FeaturePages').then(module => ({ default: module.InvestigationsPage })))
 const SettingsPage = lazy(() => import('./FeaturePages').then(module => ({ default: module.SettingsPage })))
+const BriefPage = lazy(() => import('./BriefPage'))
 
 const capabilities: { number: string; title: string; text: string; icon: LucideIcon }[] = [
   { number: '01', title: 'Analyze reviews', text: 'Bring customer feedback into a clearer, structured view.', icon: MessageSquareText },
@@ -120,5 +121,5 @@ function LandingPage() {
 }
 
 export default function App() {
-  return <Suspense fallback={<main style={{ padding: '3rem' }}>Loading dashboard…</main>}><Routes><Route path="/" element={<LandingPage />} /><Route path="/dashboard" element={<Dashboard />} /><Route path="/dashboard/reviews" element={<ReviewExplorer />} /><Route path="/dashboard/sentiment" element={<SentimentPage />} /><Route path="/dashboard/complaints" element={<ComplaintPage />} /><Route path="/dashboard/insights" element={<InsightsPage />} /><Route path="/dashboard/ask" element={<AskPage />} /><Route path="/dashboard/investigations" element={<InvestigationsPage />} /><Route path="/dashboard/settings" element={<SettingsPage />} /><Route path="*" element={<LandingPage />} /></Routes></Suspense>
+  return <Suspense fallback={<main style={{ padding: '3rem' }}>Loading dashboard…</main>}><Routes><Route path="/" element={<LandingPage />} /><Route path="/dashboard" element={<Dashboard />} /><Route path="/dashboard/reviews" element={<ReviewExplorer />} /><Route path="/dashboard/sentiment" element={<SentimentPage />} /><Route path="/dashboard/complaints" element={<ComplaintPage />} /><Route path="/dashboard/insights" element={<InsightsPage />} /><Route path="/dashboard/ask" element={<AskPage />} /><Route path="/dashboard/investigations" element={<InvestigationsPage />} /><Route path="/dashboard/settings" element={<SettingsPage />} /><Route path="/dashboard/brief" element={<BriefPage />} /><Route path="*" element={<LandingPage />} /></Routes></Suspense>
 }

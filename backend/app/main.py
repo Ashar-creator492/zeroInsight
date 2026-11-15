@@ -18,6 +18,7 @@ from backend.app.routers.intelligence import router as intelligence_router
 from backend.app.routers.retrieval import router as retrieval_router
 from backend.app.routers.chat import router as chat_router
 from backend.app.routers.investigations import router as investigations_router
+from backend.app.routers.brief import router as brief_router
 
 # Initialize application resources during startup and release them during shutdown.
 @asynccontextmanager
@@ -58,6 +59,7 @@ app.include_router(intelligence_router)
 app.include_router(retrieval_router)
 app.include_router(chat_router)
 app.include_router(investigations_router)
+app.include_router(brief_router)
 
 
 @app.get("/health")

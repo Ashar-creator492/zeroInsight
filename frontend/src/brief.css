@@ -1,0 +1,13 @@
+.brief-document { display: grid; gap: 1.25rem; }
+.brief-document details { margin: .7rem 0; }
+.brief-document summary { cursor: pointer; }
+.brief-document blockquote { margin: .7rem 0; padding-left: 1rem; border-left: 2px solid #b51e20; }
+.brief-document a { color: #a2191d; }
+.brief-print { margin-top: .5rem; }
+@media print {
+  .d-sidebar, .d-header, .brief-print, .d-menu-toggle { display: none !important; }
+  .dashboard, .d-main { display: block !important; margin: 0 !important; padding: 0 !important; background: white !important; }
+  .brief-document { display: block; color: black; }
+  .brief-document section { break-inside: avoid; margin-bottom: 1rem; box-shadow: none; }
+  .brief-document details { display: block; }
+}

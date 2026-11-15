@@ -19,6 +19,7 @@ const navItems: { label: string; icon: LucideIcon; path?: string }[] = [
   { label: 'Overview', icon: Home, path: '/dashboard' }, { label: 'Review Explorer', icon: Search, path: '/dashboard/reviews' },
   { label: 'Sentiment Analytics', icon: BarChart3, path: '/dashboard/sentiment' }, { label: 'Complaint Intelligence', icon: CircleHelp, path: '/dashboard/complaints' },
   { label: 'AI Insights', icon: Sparkles, path: '/dashboard/insights' }, { label: 'Ask ZeroInsight', icon: MessageSquareText, path: '/dashboard/ask' },
+  { label: 'Improvement Brief', icon: Layers3, path: '/dashboard/brief' },
   { label: 'Investigation Center', icon: Workflow, path: '/dashboard/investigations' }, { label: 'Settings & Processing', icon: Settings2, path: '/dashboard/settings' },
 ]
 
