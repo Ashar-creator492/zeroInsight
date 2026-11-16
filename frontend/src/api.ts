@@ -39,7 +39,7 @@ export interface ImprovementBrief { product_id: string; generated_at: string; ve
 export interface Distribution { product_id: string; analyzed_reviews: number; counts: Record<string, number> }
 export interface RatingSentiment { product_id: string; analyzed_reviews: number; ratings: ({ rating: number } & Record<string, number>)[] }
 export interface ComplaintBreakdown { product_id: string; analyzed_reviews: number; categories: { category: string; count: number; severity: Record<string, number> }[] }
-export interface ReviewFilters { search?: string; rating?: string; sentiment?: string; complaint?: string; sort?: string; order?: string; page?: number; page_size?: number }
+export interface ReviewFilters { search?: string; source_id?: string; rating?: string; sentiment?: string; complaint?: string; sort?: string; order?: string; page?: number; page_size?: number }
 
 const base = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 

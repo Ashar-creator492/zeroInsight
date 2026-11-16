@@ -7,7 +7,7 @@ import './features.css'
 import './brief.css'
 
 function Evidence({ item, product }: { item: BriefItem; product: string }) {
-  return <details open><summary>View supporting reviews</summary>{item.evidence.map(row => <blockquote key={row.review_id} dir="auto">“{row.quote}” <Link to={`/dashboard/reviews?product=${encodeURIComponent(product)}&search=${encodeURIComponent(row.review_id)}`}>Review {row.review_id}</Link> {/^https?:\/\//i.test(row.source_url) && <a href={row.source_url} target="_blank" rel="noreferrer">Original source ↗</a>}</blockquote>)}</details>
+  return <details open><summary>View supporting reviews</summary>{item.evidence.map(row => <blockquote key={row.review_id} dir="auto">“{row.quote}” <Link to={`/dashboard/reviews?product=${encodeURIComponent(product)}&source_id=${encodeURIComponent(row.review_id)}`}>Review {row.review_id}</Link> {/^https?:\/\//i.test(row.source_url) && <a href={row.source_url} target="_blank" rel="noreferrer">Original source ↗</a>}</blockquote>)}</details>
 }
 
 export default function BriefPage() {

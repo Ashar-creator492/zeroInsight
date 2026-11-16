@@ -8,6 +8,9 @@
   .d-sidebar, .d-header, .brief-print, .d-menu-toggle { display: none !important; }
   .dashboard, .d-main { display: block !important; margin: 0 !important; padding: 0 !important; background: white !important; }
   .brief-document { display: block; color: black; }
-  .brief-document section { break-inside: avoid; margin-bottom: 1rem; box-shadow: none; }
+  .brief-document::before { content: 'ZEROINSIGHT AI  |  PRODUCT IMPROVEMENT BRIEF'; display: block; font-size: 10pt; font-weight: 700; letter-spacing: .12em; margin-bottom: 1rem; }
+  .brief-document .f-insights-grid { display: block; }
+  .brief-document section { break-inside: auto; margin-bottom: 1rem; box-shadow: none; }
+  .brief-document article, .brief-document blockquote { break-inside: avoid; }
   .brief-document details { display: block; }
 }

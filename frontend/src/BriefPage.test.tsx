@@ -17,6 +17,7 @@ it('renders evidence and an investigation handoff and supports PDF printing', as
   render(<MemoryRouter><BriefPage /></MemoryRouter>)
   expect(await screen.findByText(/1 of 2 reviews/)).toBeTruthy()
   expect(screen.getByText(/Battery drains early/)).toBeTruthy()
+  expect(screen.getByRole('link', { name: 'Review 1' }).getAttribute('href')).toContain('source_id=1')
   expect(screen.getByRole('link', { name: /Investigate this category/ }).getAttribute('href')).toContain('category=battery')
   fireEvent.click(screen.getByRole('button', { name: /Print or save/ }))
   expect(print).toHaveBeenCalledOnce()

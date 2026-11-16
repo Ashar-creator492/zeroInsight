@@ -39,7 +39,7 @@ describe('future AI interfaces', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
     expect(await screen.findByText('A customer liked the battery.')).toBeTruthy()
     expect(screen.getByRole('link', { name: '[21]' }).getAttribute('href')).toBe('#citation-21')
-    expect(screen.getByRole('link', { name: /Open review/ }).getAttribute('href')).toContain('search=21')
+    expect(screen.getByRole('link', { name: /Open review/ }).getAttribute('href')).toContain('source_id=21')
   })
   it('keeps investigation decisions disabled', async () => {
     show(<InvestigationsPage />)

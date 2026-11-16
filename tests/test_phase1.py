@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 from backend.app.database import Base, get_db
 from backend.app.ingest import CSVValidationError, import_reviews, load_reviews
 from backend.app.main import app
-from backend.app.models import Review
+from backend.app.models import Product, Review
 
 COLUMNS = ["id", "product", "review_text", "title", "rating", "date", "source_url"]
 
@@ -25,6 +25,19 @@ def write_csv(path, rows, columns=COLUMNS):
         writer = csv.DictWriter(file, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def test_source_id_filter_is_exact(engine):
+    with Session(engine) as db:
+        db.add(Product(id='luna-smartwatch', name='Luna'))
+        for source in ('38', '138'):
+            db.add(Review(id=source * 21 + source[:1], product_id='luna-smartwatch', source_id=source,
+                          review_text='A review', rating=5, raw_date='', source_url='https://example.test',
+                          content_fingerprint='a' * 64))
+        db.commit()
+        from backend.app.services.reviews import get_review_page
+        result = get_review_page(db, 'luna-smartwatch', 1, 10, 'model', source_id='38')
+        assert result.total == 1 and result.items[0].source_id == '38'
 
 
 @pytest.fixture

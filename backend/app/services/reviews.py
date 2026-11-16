@@ -11,12 +11,15 @@ from backend.app.services.classification import CLASSIFICATION_VERSION
 # Filter the complete dataset server-side and attach only matching current-version analyses.
 def get_review_page(db: Session, product_id: str, page: int, page_size: int, model_name: str,
                     search: str | None = None, rating: int | None = None, sentiment: str | None = None,
-                    complaint: str | None = None, sort: str = "date", order: str = "desc") -> ReviewsPage:
+                    complaint: str | None = None, sort: str = "date", order: str = "desc",
+                    source_id: str | None = None) -> ReviewsPage:
     query = select(Review, ReviewClassification).outerjoin(ReviewClassification, and_(
         ReviewClassification.review_id == Review.id, ReviewClassification.model_name == model_name,
         ReviewClassification.version == CLASSIFICATION_VERSION,
         ReviewClassification.content_fingerprint == Review.content_fingerprint,
     )).where(Review.product_id == product_id)
+    if source_id:
+        query = query.where(Review.source_id == source_id)
     if search and search.strip():
         term = search.strip()
         query = query.where(or_(Review.review_text.icontains(term, autoescape=True),

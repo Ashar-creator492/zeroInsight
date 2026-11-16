@@ -31,6 +31,7 @@ def reviews(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     search: str | None = Query(default=None, max_length=200),
+    source_id: str | None = Query(default=None, max_length=200),
     rating: int | None = Query(default=None, ge=1, le=5),
     sentiment: Sentiment | None = None,
     complaint: Complaint | None = None,
@@ -40,7 +41,7 @@ def reviews(
 ):
     require_product(db, product_id)
     return get_review_page(db, product_id, page, page_size, get_settings().groq_model,
-                           search, rating, sentiment, complaint, sort, order)
+                           search, rating, sentiment, complaint, sort, order, source_id)
 
 
 @router.get("/{product_id}/summary", response_model=ProductSummary)
