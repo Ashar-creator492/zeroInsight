@@ -191,9 +191,12 @@ h2 { margin-bottom: 0; font-size: clamp(51px, 6.3vw, 89px); line-height: .93; }
 .hero-copy { color: #f4eae6; }
 .hero-copy .demo-unavailable { color: #e9dcd8; }
 .site-header { color: #fff; }
+@media (min-width: 768px) and (max-width: 1100px) {
+  .hero-scene { left: 39%; }
+}
 @media (max-width: 767px) {
   .hero-art { background: #130b0c; }
   .hero-art::after { display: none; }
-  .hero-scene { width: max(130%, 94vh); top: auto; bottom: 0; left: 31%; transform: translateX(-50%); }
+  .hero-scene { width: max(130%, 94vh); top: auto; bottom: 0; left: 14%; transform: translateX(-50%); }
   .hero-copy .demo-unavailable { color: #514742; }
 }

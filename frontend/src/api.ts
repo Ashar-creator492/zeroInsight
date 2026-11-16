@@ -3,10 +3,11 @@ export interface ChatAnswer { claims: { text: string; review_ids: string[]; evid
 export interface Investigation {
   id: string; status: string; request: string; product_id: string; stage: string
   evidence?: (ChatSource & { retrieval_query: string })[]
-  report?: { findings: { kind: string; text: string; citations: { review_id: string; evidence_quote: string }[] }[]; limitations: string; evidence_status: string }
+  report?: { findings: InvestigationFinding[]; invalidated_findings?: InvestigationFinding[]; limitations: string; evidence_status: string }
   decision?: { decision: string; notes: string; decided_at: string }
   analytics?: { version: string; analyzed: number; category: string | null; category_count: number | null }
 }
+interface InvestigationFinding { kind: string; text: string; citations: { review_id: string; evidence_quote: string }[]; verification_status?: string; verification_reason?: string }
 export interface Product { id: string; name: string }
 export interface ReviewAnalysis {
   sentiment: string | null; complaint_categories: string[] | null

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.config import get_settings
 from backend.app.security import limit_ai_requests, provider_status, require_decision_authorization
-from backend.app.services.investigation import build_graph
+from backend.app.services.investigation import build_graph, review_report
 from backend.app.database import get_db
 from backend.app.models import Review
 
@@ -50,7 +50,10 @@ def snapshot(graph, thread_id: str):
     status = "failed" if any(task.error for task in state.tasks) else (
         "awaiting_review" if state.next == ("human_approval",) else (
             state.values.get("decision", {}).get("decision") or "in_progress"))
-    return {"id": thread_id, "status": status, **state.values}
+    values = dict(state.values)
+    if values.get("report"):
+        values["report"] = review_report(values["report"], values.get("evidence", []))
+    return {"id": thread_id, "status": status, **values}
 
 
 @router.post("", status_code=201, dependencies=[Depends(limit_ai_requests)])

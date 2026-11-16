@@ -1,6 +1,7 @@
 """Build a review-backed improvement brief without a model call."""
 from collections import defaultdict
 from datetime import datetime, timezone
+import re
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -31,6 +32,9 @@ def improvement_brief(product_id: str, db: Session = Depends(get_db)):
                     continue
                 if quote not in review.review_text and quote not in (review.title or ''):
                     continue
+                # A cut-off quotation cannot establish what the missing text says.
+                if re.search(r'(?:\.\.\.|…)(?:\s*read more)?\s*$', quote, re.I):
+                    continue
                 groups[category][review.id] = {'review_id': review.source_id, 'quote': quote, 'source_url': review.source_url}
 
     def summarize(groups):
@@ -54,5 +58,5 @@ def improvement_brief(product_id: str, db: Session = Depends(get_db)):
             'version': CLASSIFICATION_VERSION, 'total_reviews': total, 'analyzed_reviews': len(rows),
             'excluded_reviews': total - len(rows), 'complaints': complaint_groups, 'praised_features': praise_groups,
             'recommendations': recommendations,
-            'methodology': 'Counts use distinct completed classifications with exact quotes. Percentages use all completed classifications. Priority is review frequency: high 10+, medium 3–9, low 1–2; severity is unknown.',
+            'methodology': 'Counts use distinct completed classifications with exact, non-truncated quotes. Percentages use all completed classifications. Priority is review frequency: high 10+, medium 3–9, low 1–2; severity is unknown.',
             'limitations': 'Reviews are customer reports, not verified defects. Exact quotes do not guarantee semantic accuracy. Failed and pending classifications are excluded. This independent project is not endorsed by the brand.'}

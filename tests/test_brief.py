@@ -17,10 +17,10 @@ def test_brief_counts_distinct_verified_evidence_and_excludes_failed(monkeypatch
     with Session(engine) as db:
         db.add(Product(id='luna-smartwatch', name='Luna'))
         for i in range(3):
-            db.add(Review(id=str(i) * 64, product_id='luna-smartwatch', source_id=str(i), review_text='Battery dies early', title='Good screen', rating=2, raw_date='', source_url='https://example.test', content_fingerprint=str(i) * 64))
+            db.add(Review(id=str(i) * 64, product_id='luna-smartwatch', source_id=str(i), review_text='Battery dies early; after charging it lasted... Read more', title='Good screen', rating=2, raw_date='', source_url='https://example.test', content_fingerprint=str(i) * 64))
         db.flush()
         db.add_all([
-            ReviewClassification(review_id='0' * 64, model_name='model', version='8', content_fingerprint='0' * 64, status='completed', complaint_evidence=[{'category': 'battery', 'evidence_quote': 'Battery dies early'}, {'category': 'battery', 'evidence_quote': 'Battery dies early'}, {'category': 'display', 'evidence_quote': 'invented'}], praised_features=[{'category': 'display', 'evidence_quote': 'Good screen'}]),
+            ReviewClassification(review_id='0' * 64, model_name='model', version='8', content_fingerprint='0' * 64, status='completed', complaint_evidence=[{'category': 'battery', 'evidence_quote': 'Battery dies early'}, {'category': 'battery', 'evidence_quote': 'Battery dies early'}, {'category': 'display', 'evidence_quote': 'invented'}, {'category': 'charging', 'evidence_quote': 'after charging it lasted...'}], praised_features=[{'category': 'display', 'evidence_quote': 'Good screen'}]),
             ReviewClassification(review_id='1' * 64, model_name='model', version='8', content_fingerprint='1' * 64, status='failed'),
             ReviewClassification(review_id='2' * 64, model_name='model', version='9', content_fingerprint='2' * 64, status='completed', complaint_evidence=[{'category': 'battery', 'evidence_quote': 'Battery dies early'}]),
         ])

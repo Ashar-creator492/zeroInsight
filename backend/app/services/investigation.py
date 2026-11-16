@@ -65,7 +65,33 @@ without adding unsupported details. Group related evidence into coherent finding
 the same review or quotation across findings unless necessary to support a distinct point.
 Do not invent reviews, specifications, statistics, counts, proportions,
 prevalence, trends, causes or details. Never generalize this retrieved sample to all customers.
+Never infer what follows a truncated review or an ellipsis; do not cite an incomplete quotation.
 Do not include numbers in finding text. If evidence is insufficient, return an empty findings list."""
+
+
+def review_report(report: dict, evidence: list[dict]) -> dict:
+    """Flag incomplete quotations and label all interpretations for human review.
+
+    This is a presentation-time safeguard: historical checkpoints stay untouched.
+    Exact text matching cannot establish semantic entailment.
+    """
+    findings, invalidated = [], []
+    sources = {row['source_id']: row for row in evidence}
+    for finding in report.get("findings", []):
+        citations = finding.get('citations', [])
+        incomplete = any(re.search(r"(?:\.\.\.|…)(?:\s*read more)?\s*$", c.get("evidence_quote", ""), re.I)
+                         for c in citations)
+        invalid = not citations or any(
+            not (row := sources.get(c.get('review_id'))) or not (quote := c.get('evidence_quote'))
+            or not any(quote in (row.get(field) or '') for field in ('review_text', 'title'))
+            for c in citations)
+        if incomplete or invalid:
+            invalidated.append({**finding, "verification_status": "invalidated",
+                                "verification_reason": "A quotation is incomplete or does not exactly match retrieved evidence; the finding requires review."})
+        else:
+            findings.append({**finding, "verification_status": "unverified"})
+    return {**report, "findings": findings, "invalidated_findings": invalidated,
+            "evidence_status": "available" if findings else "insufficient evidence"}
 
 
 def understand(state: InvestigationState) -> dict:

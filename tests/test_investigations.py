@@ -77,7 +77,7 @@ def test_endpoints_pause_and_record_revision(monkeypatch):
     ident = response.json()['id']
     history = client.get('/api/investigations').json()['items']
     assert len(history) == 1 and history[0]['id'] == ident and history[0]['status'] == 'awaiting_review'
-    assert client.get(f'/api/investigations/{ident}').json()['report']['findings'] == [FINDING]
+    assert client.get(f'/api/investigations/{ident}').json()['report']['findings'] == [{**FINDING, 'verification_status': 'unverified'}]
     assert client.post(f'/api/investigations/{ident}/resume').status_code == 409
     monkeypatch.setattr(security, 'get_settings', lambda: SimpleNamespace(admin_token=SecretStr('test-admin-token')))
     assert client.post(f'/api/investigations/{ident}/decision', json={'decision': 'approve'}).status_code == 401
@@ -128,3 +128,15 @@ def test_investigation_timeout_is_sanitized(monkeypatch, caplog):
     assert response.status_code == 504
     assert 'private credential' not in response.text + caplog.text
     assert 'stage=analyze_evidence type=TimeoutError' in caplog.text
+
+
+def test_truncated_evidence_invalidates_finding_without_changing_checkpoint():
+    finding = {**FINDING, 'citations': [{'review_id': '7', 'evidence_quote': 'The battery drained in... Read more'}]}
+    report = {'findings': [finding, FINDING], 'evidence_status': 'available'}
+    evidence = [{**EVIDENCE[0], 'review_text': 'The battery drained in... Read more Battery runs out early'}]
+    checked = agent.review_report(report, evidence)
+    assert checked['invalidated_findings'][0]['verification_status'] == 'invalidated'
+    assert checked['findings'][0]['verification_status'] == 'unverified'
+    assert report['findings'] == [finding, FINDING]
+    assert agent.review_report({'findings': [finding]}, evidence)['evidence_status'] == 'insufficient evidence'
+    assert agent.review_report({'findings': [FINDING]}, [])['invalidated_findings']
